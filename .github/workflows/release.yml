@@ -23,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Zip the release files
-        run: cd download && zip -r ../sheexcel_latest.zip .
+        run: cd src && zip -r ../sheexcel_latest.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
