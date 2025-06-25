@@ -1,5 +1,6 @@
 #!/bin/bash
-
+permissions:
+  contents: write
 # Get the latest tag
 latest_tag=$(git describe --tags --abbrev=0 2>/dev/null)
 
