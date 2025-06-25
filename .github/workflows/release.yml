@@ -21,9 +21,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build the module
-        run: npm run build
-
       - name: Zip the release files
         run: cd download && zip -r ../sheexcel_latest.zip .
 
