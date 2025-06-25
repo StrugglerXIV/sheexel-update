@@ -1,5 +1,6 @@
 name: Build & Release Foundry Module
-
+permissions:
+  contents: write
 on:
   push:
     tags:
