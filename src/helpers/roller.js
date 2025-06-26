@@ -1,28 +1,54 @@
 // helpers/roller.js
+
+/**
+ * Handle click on any .sheexcel-roll button in the main tab.
+ * Expects the button to carry:
+ *    data-value          → the attack modifier
+ *    data-crit           → the numeric crit threshold
+ *    data-damage         → the damage formula (e.g. "1d8+STR")
+ *    data-advantage-mode → "adv", "norm", or "dis"
+ */
 export async function handleRoll(event, sheet) {
   event.preventDefault();
-  const $btn    = $(event.currentTarget);
-  const mod     = Number($btn.data("value")) || 0;
-  const keyword = $btn.text().trim();
-  // 1️⃣ Read the chosen mode
-  const mode = sheet.element.find('input[name="roll-mode"]:checked').val();
-  // 2️⃣ Build the d20 formula
-  let formula;
-  if (mode === "adv") {
-    formula = `2d20kh1 + ${mod}`;
-  } else if (mode === "dis") {
-    formula = `2d20kl1 + ${mod}`;
-  } else {
-    formula = `1d20 + ${mod}`;
-  }
-  const flavor = `${keyword} (${mod >= 0 ? "+" : ""}${mod})`;
+  const btn    = $(event.currentTarget);
+  const mod    = Number(btn.data("value")) || 0;
+  const crit   = Number(btn.data("crit"))  || 20;
+  const dmgF   = String(btn.data("damage")) || "";
+  const advMode= btn.closest(".sheexcel-sidebar").find("input[name='roll-mode']:checked").val();
 
-  // 3️⃣ Construct and evaluate the roll asynchronously
-  const roll = await new Roll(formula).evaluate({async: true});
+  // build the d20 formula
+  let d20;
+  if (advMode === "adv") d20 = "2d20kh1";
+  else if (advMode === "dis") d20 = "2d20kl1";
+  else d20 = "1d20";
 
-  // 4️⃣ Post to chat with proper speaker and flavor
-  roll.toMessage({
+  const formula = `${d20}+${mod >= 0 ? mod : `(${mod})`}`;
+  const roll    = new Roll(formula);
+  await roll.evaluate({ async: true });
+
+  // Check for crit
+  // extract the raw d20 result(s), before adding mod
+  const terms = roll.terms.filter(t => t.faces === 20);
+  const rolls = terms.flatMap(t => t.results.map(r => r.result));
+  const top   = Math.max(...rolls);
+  const isCrit= top >= crit;
+
+  // Render the d20 roll
+  await roll.toMessage({
     speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
-    flavor
+    flavor: `<strong>${btn.text()}</strong> → ${roll.total}` +
+            (isCrit ? ` <span class="sheexcel-crit">[CRIT!]</span>` : "")
   });
+
+  // If this was an attack AND a crit or not, immediately ask to roll damage
+  if (dmgF) {
+    const dmgRoll = new Roll(dmgF);
+    await dmgRoll.evaluate({ async: true });
+    await dmgRoll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
+      flavor: isCrit
+        ? `<strong>🔪 Critical Damage</strong>: ${dmgRoll.formula}`
+        : `<strong>🔪 Damage</strong>: ${dmgRoll.formula}`
+    });
+  }
 }

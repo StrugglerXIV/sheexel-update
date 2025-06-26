@@ -3,17 +3,17 @@
 
     <!-- ▷ Roll Mode Selector -->
     <div class="sheexcel-roll-mode">
-      <label><input type="radio" name="roll-mode" value="adv"  checked> Advantage</label>
+      <label><input type="radio" name="roll-mode" value="adv" checked> Advantage</label>
       <label><input type="radio" name="roll-mode" value="norm"> Normal</label>
-      <label><input type="radio" name="roll-mode" value="dis" > Disadvantage</label>
+      <label><input type="radio" name="roll-mode" value="dis"> Disadvantage</label>
     </div>
 
     <!-- ▷ Subtab Navigation -->
     <nav class="sheexcel-main-subtab-nav tabs" data-group="secondary">
       <a class="item active" data-tab="checks">Checks</a>
-      <a class="item" data-tab="saves">Saves</a>
-      <a class="item" data-tab="attacks">Attacks</a>
-      <a class="item" data-tab="spells">Spells</a>
+      <a class="item"       data-tab="saves">Saves</a>
+      <a class="item"       data-tab="attacks">Attacks</a>
+      <a class="item"       data-tab="spells">Spells</a>
     </nav>
 
     <!-- ▷ Checks Pane -->
@@ -29,6 +29,7 @@
         <i>No checks defined</i>
       {{/unless}}
     </div>
+
     <!-- ▷ Saves Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
       {{#each groupedReferences.saves}}
@@ -42,19 +43,40 @@
         <i>No saves defined</i>
       {{/unless}}
     </div>
-    <!-- ▷ Attacks Pane -->
-    <div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
-      {{#each groupedReferences.attacks}}
-        <div>
-          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
-            {{this.keyword}}
-          </button> → {{this.value}}
-        </div>
-      {{/each}}
-      {{#unless groupedReferences.attacks.length}}
-        <i>No attacks defined</i>
-      {{/unless}}
+
+  <!-- ▷ Attacks Pane -->
+<div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
+  {{#each groupedReferences.attacks}}
+    <div class="attack-entry">
+      <!-- 1) Show the fetched attack name -->
+      <strong>{{this.attackName}}</strong><br>
+
+      <!-- 2) Roll button carries mod, crit threshold, and damage formula -->
+      <button
+        type="button"
+        class="sheexcel-roll"
+        data-value="{{this.value}}"
+        data-crit="{{this.critRange}}"
+        data-damage="{{this.damage}}"
+      >
+        {{this.keyword}}
+      </button>
+       → {{this.value}}<br>
+
+      <!-- 3) Display static damage & crit info -->
+      <small>
+        Damage: <code>{{this.damage}}</code>
+        | Crit on ≥ <code>{{this.critRange}}</code>
+      </small>
     </div>
+  {{/each}}
+
+  {{#unless groupedReferences.attacks.length}}
+    <i>No attacks defined</i>
+  {{/unless}}
+</div>
+
+
     <!-- ▷ Spells Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="spells" style="display:none;">
       {{#each groupedReferences.spells}}

@@ -5,6 +5,10 @@
     padding: 5px 5px;
     position: relative;
 }
+.sheexcel-crit {
+  color: #0f0;
+  font-weight: bold;
+}
 
 
 .sheexcel-roll-mode {
