@@ -1,0 +1,35 @@
+<div class="sheexcel-sidebar-tab tab references" data-tab="references">
+  <h3>References</h3>
+  <button type="button" class="sheexcel-import-json">Import JSON…</button>
+  <input type="file" id="sheexcel-json-file" accept="application/json" style="display:none;">
+
+  <div class="sheexcel-references">
+    {{#each adjustedReferences}}
+      <div class="sheexcel-reference-row" data-index="{{this.index}}">
+        <input type="text" class="sheexcel-reference-input" data-type="cell"    data-index="{{this.index}}" value="{{this.cell}}"    placeholder="Cell">
+        <input type="text" class="sheexcel-reference-input" data-type="keyword" data-index="{{this.index}}" value="{{this.keyword}}" placeholder="Keyword">
+        <select class="sheexcel-reference-input" data-type="sheet" data-index="{{this.index}}">
+          {{#each this.sheetNames}}
+            <option value="{{this}}" {{#if (eq this ../sheet)}}selected{{/if}}>{{this}}</option>
+          {{/each}}
+        </select>
+        <select class="sheexcel-reference-input" data-type="refType" data-index="{{this.index}}">
+          <option value="checks"  {{#if (eq this.type "checks")}}selected{{/if}}>Checks</option>
+          <option value="saves"   {{#if (eq this.type "saves")}}selected{{/if}}>Saves</option>
+          <option value="attacks" {{#if (eq this.type "attacks")}}selected{{/if}}>Attacks</option>
+          <option value="spells"  {{#if (eq this.type "spells")}}selected{{/if}}>Spells</option>
+        </select>
+        <div class="sheexcel-reference-remove">
+          <button type="button" class="sheexcel-reference-remove-save"   data-index="{{this.index}}">🔄</button>
+          <button type="button" class="sheexcel-reference-remove-button" data-index="{{this.index}}">Remove</button>
+          <span class="sheexcel-reference-value">{{this.value}}</span>
+        </div>
+      </div>
+    {{/each}}
+  </div>
+
+  <div class="sheexcel-references-controls">
+    <button type="button" class="sheexcel-reference-save-button">Save References</button>
+    <button type="button" class="sheexcel-reference-add-button">Add Reference</button>
+  </div>
+</div>

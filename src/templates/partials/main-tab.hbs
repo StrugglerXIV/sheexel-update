@@ -1,0 +1,73 @@
+<div class="sheexcel-sidebar-tab tab main active" data-tab="main">
+  <div class="sheexcel-main-subtabs">
+
+    <!-- ▷ Roll Mode Selector -->
+    <div class="sheexcel-roll-mode">
+      <label><input type="radio" name="roll-mode" value="adv"  checked> Advantage</label>
+      <label><input type="radio" name="roll-mode" value="norm"> Normal</label>
+      <label><input type="radio" name="roll-mode" value="dis" > Disadvantage</label>
+    </div>
+
+    <!-- ▷ Subtab Navigation -->
+    <nav class="sheexcel-main-subtab-nav tabs" data-group="secondary">
+      <a class="item active" data-tab="checks">Checks</a>
+      <a class="item" data-tab="saves">Saves</a>
+      <a class="item" data-tab="attacks">Attacks</a>
+      <a class="item" data-tab="spells">Spells</a>
+    </nav>
+
+    <!-- ▷ Checks Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
+      {{#each groupedReferences.checks}}
+        <div>
+          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+            {{this.keyword}}
+          </button> → {{this.value}}
+        </div>
+      {{/each}}
+      {{#unless groupedReferences.checks.length}}
+        <i>No checks defined</i>
+      {{/unless}}
+    </div>
+    <!-- ▷ Saves Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
+      {{#each groupedReferences.saves}}
+        <div>
+          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+            {{this.keyword}}
+          </button> → {{this.value}}
+        </div>
+      {{/each}}
+      {{#unless groupedReferences.saves.length}}
+        <i>No saves defined</i>
+      {{/unless}}
+    </div>
+    <!-- ▷ Attacks Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
+      {{#each groupedReferences.attacks}}
+        <div>
+          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+            {{this.keyword}}
+          </button> → {{this.value}}
+        </div>
+      {{/each}}
+      {{#unless groupedReferences.attacks.length}}
+        <i>No attacks defined</i>
+      {{/unless}}
+    </div>
+    <!-- ▷ Spells Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="spells" style="display:none;">
+      {{#each groupedReferences.spells}}
+        <div>
+          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+            {{this.keyword}}
+          </button> → {{this.value}}
+        </div>
+      {{/each}}
+      {{#unless groupedReferences.spells.length}}
+        <i>No spells defined</i>
+      {{/unless}}
+    </div>
+
+  </div>
+</div>

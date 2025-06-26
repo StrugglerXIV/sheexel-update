@@ -1,0 +1,17 @@
+<div class="sheexcel-sidebar-tab tab settings" data-tab="settings">
+  <h3>Settings</h3>
+  <div class="sheexcel-settings">
+    <div class="sheexcel-settings-container">
+      <input id="sheexcel-setting-url" type="text" name="sheetUrl" value="{{sheetUrl}}" placeholder="Paste Google Sheet URL">
+      <button type="button" class="sheexcel-setting-update-sheet">Update Sheet</button>
+    </div>
+    <div class="sheexcel-settings-container">
+      <input id="sheexcel-setting-zoom-slider" type="range" min="25" max="175" step="5" value="{{zoomLevel}}">
+      <span>{{zoomLevel}}%</span>
+    </div>
+    <div class="sheexcel-settings-container">
+      <input id="sheexcel-setting-hide-menu" type="checkbox" {{#if hideMenu}}checked{{/if}}>
+      <label for="sheexcel-setting-hide-menu">Hide Menu</label>
+    </div>
+  </div>
+</div>

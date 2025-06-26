@@ -1,253 +1,225 @@
-Hooks.once("init", async function () {
-
-  for (const type of ["character", "npc", "creature", "vehicle"]) {
-    if (!CONFIG.Actor.sheetClasses[type]) CONFIG.Actor.sheetClasses[type] = {};
-    CONFIG.Actor.sheetClasses[type]["sheexcel"] = {
-      label: "Sheexcel",
-      sheetClass: SheexcelActorSheet,
-      makeDefault: false
-    };
+// at top of sheexcel.js
+Hooks.once("init", async () => {
+  const paths = [
+    "modules/sheexcel_updated/templates/partials/main-tab.hbs",
+    "modules/sheexcel_updated/templates/partials/references-tab.hbs",
+    "modules/sheexcel_updated/templates/partials/settings-tab.hbs"
+  ];
+  console.log("⏳ Sheexcel loading templates from:", paths);
+  try {
+    await loadTemplates(paths);
+    console.log("✅ Partials loaded, Handlebars.partials keys:", Object.keys(Handlebars.partials));
+  } catch (err) {
+    console.error("❌ loadTemplates failed:", err);
   }
-
-  libWrapper.register("sheexcel", "CONFIG.Actor.documentClass.prototype.prepareData", function (wrapped) {
-    wrapped.call(this);
-
-    const refs = this.getFlag("sheexcel", "cellReferences") || [];
-    const sheexcel = {};
-
-    for (const ref of refs) {
-      if (ref.keyword && ref.value !== undefined) {
-        sheexcel[ref.keyword] = ref.value;
-      }
-    }
-
-    if (!this.system) this.system = {};
-    this.system.sheexcel = sheexcel;
-  }, "WRAPPER");
-
-  game.sheexcel = {
-    getSheexcelValue: (actorId, keyword) => {
-      const actor = game.actors.get(actorId);
-      if (actor && actor.sheet?.getSheexcelValue) {
-        return {
-          value: actor.sheet.getSheexcelValue(keyword),
-          actor: actor
-        };
-      }
-      return null;
-    }
-  };
-
 });
 
-class SheexcelActorSheet extends ActorSheet {
+
+
+// modules/sheexcel_updated/sheexcel.js
+
+import { prepareSheetData }  from "../helpers/prepareData.js";
+import { importJsonHandler } from "../helpers/importer.js";
+import { batchFetchValues }  from "../helpers/batchFetcher.js";
+import { handleRoll }        from "../helpers/roller.js";
+
+export class SheexcelActorSheet extends ActorSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ["sheet", "actor", "sheexcel"],
-      template: "modules/sheexcel/templates/sheet-template.html",
-      width: 1200,
-      height: 700,
+      classes:   ["sheet", "actor", "sheexcel"],
+      template:  "modules/sheexcel_updated/templates/sheet-template.html",
+      width:     1200,
+      height:    700,
       resizable: true,
-      tabs: [{
-        navSelector: ".sheexcel-sheet-tabs",
-        contentSelector: ".sheexcel-sidebar",
-        initial: "settings"
-      }]
+      tabs: [
+        { navSelector: ".sheexcel-sheet-tabs",      contentSelector: ".sheexcel-sidebar",       initial: "main"   },
+        { navSelector: ".sheexcel-main-subtab-nav", contentSelector: ".sheexcel-main-subtabs", initial: "checks" }
+      ]
     });
   }
 
-  async getData() {
-    const data = await super.getData();
-    const flags = this.actor.flags.sheexcel || {};
-    data.sheetUrl = flags.sheetUrl || "";
-    data.zoomLevel = flags.zoomLevel || 100;
-    data.hideMenu = flags.hideMenu ?? true;
-    data.sidebarCollapsed = flags.sidebarCollapsed || false;
-    data.cellReferences = foundry.utils.deepClone(flags.cellReferences || []);
-    data.sheetNames = flags.sheetNames?.length > 1 ? flags.sheetNames : null;
-    data.currentSheetName = flags.currentSheetName || null;
-    data.sheetId = flags.sheetId || null;
+/** in sheexcel.js **/
+async getData(opts) {
+  const data = await super.getData(opts);
+  return prepareSheetData(data, this.actor);
+}
 
-    data.adjustedReferences = (data.cellReferences || []).map(ref => {
-      const sheetMap = {};
-      (data.sheetNames || []).forEach(name => sheetMap[name] = name);
-      ref.sheetNames = sheetMap;
-      if (typeof ref.value === 'string' && ref.value.length > 10) {
-        ref.value = ref.value.slice(0, 10);
-      }
-      return ref;
-    });
 
-    return data;
-  }
-
+  /** Wire up all UI interactions */
   activateListeners(html) {
     super.activateListeners(html);
-    html.find(".sheexcel-sheet-toggle").on("click", this._onToggleSidebar.bind(this));
-    html.find(".sheexcel-sheet-references").on("click", this._onToggleTab.bind(this));
-    html.find(".sheexcel-sheet-settings").on("click", this._onToggleTab.bind(this));
-    html.find(".sheexcel-setting-update-sheet").on("click", this._onUpdateSheet.bind(this));
-    html.find(".sheexcel-reference-add-button").on("click", this._onAddReference.bind(this));
-    html.on("click", ".sheexcel-reference-remove-save", this._onSaveReference.bind(this));
+
+    // Toggle sidebar & primary tabs
+    html.find(".sheexcel-sheet-toggle")
+      .on("click", this._onToggleSidebar.bind(this));
+    html.find(".sheexcel-sheet-main, .sheexcel-sheet-references, .sheexcel-sheet-settings")
+      .on("click", this._onToggleTab.bind(this));
+
+    // Update Sheet URL
+    html.find(".sheexcel-setting-update-sheet")
+      .on("click", this._onUpdateSheet.bind(this));
+
+    // Reference rows: add / remove / fetch / save
+    html.on("click", ".sheexcel-reference-add-button",    this._onAddReference.bind(this));
     html.on("click", ".sheexcel-reference-remove-button", this._onRemoveReference.bind(this));
-    html.on("change", "#sheexcel-cell", this._onCellReferenceChange.bind(this));
-    html.on("change", "#sheexcel-keyword", this._onKeywordReferenceChange.bind(this));
-    html.on("change", "#sheexcel-sheet", this._onCellReferenceChange.bind(this));
+    html.on("click", ".sheexcel-reference-remove-save",   this._onFetchAndUpdateCellValueByIndex.bind(this));
+    html.on("click", ".sheexcel-reference-save-button",   this._onSaveReferences.bind(this));
 
-    this._iframe = html.find(".sheexcel-iframe")[0];
-    this._setupZoom(html);
-    this._setupHideMenu(html);
-    this._applyZoom();
+    // Import JSON
+    html.find(".sheexcel-import-json")
+      .on("click", () => html.find("#sheexcel-json-file").click());
+    html.find("#sheexcel-json-file")
+      .on("change", e => importJsonHandler(e, this.actor).then(() => this.render(false)));
+
+    // Main subtabs and roll clicks
+    html.find(".sheexcel-main-subtab-nav a.item")
+      .on("click", this._onToggleSubtab.bind(this));
+	html.find(".sheexcel-main-subtab-content")
+    .on("click", ".sheexcel-roll", e => handleRoll(e, this));
+
+    // Activate initial subtab
+    html.find(".sheexcel-main-subtab-nav a.item.active").click();
   }
 
-  async _onUpdateSheet(event) {
+  _onToggleSubtab(event) {
     event.preventDefault();
-    const sheetUrl = this.element.find('input[name="sheetUrl"]').val();
-    if (!sheetUrl) {
-      await this.actor.update({
-        'flags.sheexcel.sheetId': null,
-        'flags.sheexcel.currentSheetName': null,
-        'flags.sheexcel.sheetNames': [],
-        'flags.sheexcel.sheetUrl': ""
-      });
-      return this.render();
-    }
-    const sheetIdMatch = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (!sheetIdMatch) return ui.notifications.error("Invalid Google Sheet URL");
-    const sheetId = sheetIdMatch[1];
-    const sheetNames = await this._fetchSheetNames(sheetId);
-    const currentSheetName = sheetNames?.[0] || null;
-    await this.actor.update({
-      'flags.sheexcel.sheetId': sheetId,
-      'flags.sheexcel.sheetNames': sheetNames,
-      'flags.sheexcel.currentSheetName': currentSheetName,
-      'flags.sheexcel.sheetUrl': sheetUrl
-    });
-    this.render();
+    const tab   = event.currentTarget.dataset.tab;
+    this.element.find(".sheexcel-main-subtab-nav a.item").removeClass("active");
+    this.element.find(".sheexcel-main-subtab-content").hide();
+    $(event.currentTarget).addClass("active");
+    this.element.find(`.sheexcel-main-subtab-content[data-tab="${tab}"]`).show();
   }
 
-  async _fetchSheetNames(sheetId) {
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+  _onAddReference(event) {
+    event.preventDefault();
+    const container = this.element.find(".sheexcel-references");
+    const idx       = container.find(".sheexcel-reference-row").length;
+    const sheets    = this.actor.getFlag("sheexcel_updated", "sheetNames") || [];
+    const options   = sheets.map(n => `<option value="${n}">${n}</option>`).join("");
+    const row = $(`
+      <div class="sheexcel-reference-row" data-index="${idx}">
+        <input class="sheexcel-reference-input" data-type="cell"    data-index="${idx}" placeholder="Cell">
+        <input class="sheexcel-reference-input" data-type="keyword" data-index="${idx}" placeholder="Keyword">
+        <select class="sheexcel-reference-input" data-type="sheet"  data-index="${idx}">${options}</select>
+        <select class="sheexcel-reference-input" data-type="refType" data-index="${idx}">
+          <option value="checks">Checks</option>
+          <option value="saves">Saves</option>
+          <option value="attacks">Attacks</option>
+          <option value="spells">Spells</option>
+        </select>
+        <div class="sheexcel-reference-remove">
+          <button class="sheexcel-reference-remove-save"   data-index="${idx}">🔄</button>
+          <button class="sheexcel-reference-remove-button" data-index="${idx}">Remove</button>
+          <span class="sheexcel-reference-value"></span>
+        </div>
+      </div>`);
+    container.append(row);
+  }
+
+  _onRemoveReference(event) {
+    event.preventDefault();
+    $(event.currentTarget).closest(".sheexcel-reference-row").remove();
+  }
+
+  async _onFetchAndUpdateCellValueByIndex(index) {
+    let refs    = foundry.utils.deepClone(await this.actor.getFlag("sheexcel_updated", "cellReferences") || []);
+    const sheetId = this.actor.getFlag("sheexcel_updated", "sheetId");
+    if (!refs[index] || !sheetId) return;
+
+    const { cell, sheet } = refs[index];
+    const safeSheet = sheet.match(/[^A-Za-z0-9_]/)
+      ? `'${sheet.replace(/'/g,"''")}'`
+      : sheet;
+    const range = `${safeSheet}!${cell}`;
     try {
-      const response = await fetch(url);
-      const html = await response.text();
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const tabs = doc.querySelectorAll('.docs-sheet-tab');
-      return Array.from(tabs).map(tab => tab.textContent.trim()).filter(Boolean);
-    } catch (e) {
-      console.error("Failed to fetch sheet names:", e);
-      return [];
+      const res  = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=AIzaSyCAYacdw4aB7GtoxwnlpaF3aFZ2DgcJNHo`);
+      if (!res.ok) throw new Error(res.statusText);
+      const json = await res.json();
+      refs[index].value = json.values?.[0]?.[0] || "";
+    } catch {
+      refs[index].value = "";
     }
+    await this.actor.setFlag("sheexcel_updated", "cellReferences", refs);
+    this.render(false);
   }
 
-  async _onAddReference(event) {
+  async _onSaveReferences(event) {
     event.preventDefault();
-    const flags = this.actor.flags.sheexcel || {};
-    const refs = foundry.utils.deepClone(flags.cellReferences || []);
-    refs.push({ sheet: flags.currentSheetName, cell: "", keyword: "", value: "" });
-    await this.actor.setFlag("sheexcel", "cellReferences", refs);
-    this.render();
-  }
-
-  async _onRemoveReference(event) {
-    event.preventDefault();
-    const index = $(event.currentTarget).closest(".sheexcel-reference-cell").index();
-    const refs = foundry.utils.deepClone(this.actor.getFlag("sheexcel", "cellReferences"));
-    refs.splice(index, 1);
-    await this.actor.setFlag("sheexcel", "cellReferences", refs);
-    this.render();
-  }
-
-  async _onSaveReference(event) {
-    event.preventDefault();
-    await this._refetchAllCellValues();
-  }
-
-  async _refetchAllCellValues() {
-    const flags = this.actor.flags.sheexcel || {};
-    const refs = foundry.utils.deepClone(flags.cellReferences || []);
-    const updated = [];
-    for (const ref of refs) {
-      if (ref.cell && ref.sheet) {
-        ref.value = await this._fetchCellValue(flags.sheetId, ref.sheet, ref.cell);
-      }
-      updated.push(ref);
-    }
-    await this.actor.setFlag("sheexcel", "cellReferences", updated);
-    this.render();
-  }
-
-  async _fetchCellValue(sheetId, sheetName, cell) {
-    if (!sheetId || !sheetName || !cell) return "";
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&range=${cell}`;
-    try {
-      const res = await fetch(url);
-      const text = (await res.text()).trim();
-      return text.replace(/^"|"$/g, "");
-    } catch (e) {
-      console.warn("Failed to fetch cell value:", e);
-      return "";
-    }
-  }
-
-  async _onCellReferenceChange(event) {
-    const $el = $(event.currentTarget);
-    const index = $el.closest(".sheexcel-reference-cell").index();
-    const refs = foundry.utils.deepClone(await this.actor.getFlag("sheexcel", "cellReferences"));
-    const field = $el.attr("id").replace("sheexcel-", "");
-    refs[index][field] = $el.val();
-    await this.actor.setFlag("sheexcel", "cellReferences", refs);
-    await this._refetchAllCellValues();
-  }
-
-  async _onKeywordReferenceChange(event) {
-    const index = $(event.currentTarget).closest(".sheexcel-reference-cell").index();
-    const refs = foundry.utils.deepClone(await this.actor.getFlag("sheexcel", "cellReferences"));
-    refs[index].keyword = event.currentTarget.value;
-    await this.actor.setFlag("sheexcel", "cellReferences", refs);
-  }
-
-  _setupZoom(html) {
-    const slider = html.find("#sheexcel-setting-zoom-slider")[0];
-    const display = html.find("#sheexcel-setting-zoom-value")[0];
-    if (!slider || !display) return;
-    slider.addEventListener("input", async e => {
-      const zoom = parseInt(e.target.value);
-      display.textContent = `${zoom}%`;
-      await this.actor.setFlag("sheexcel", "zoomLevel", zoom);
-      this._applyZoom();
+    const refs = this.element.find(".sheexcel-reference-row").toArray().map(row => {
+      const $r = $(row);
+      return {
+        cell:    $r.find("input[data-type='cell']").val().trim(),
+        keyword: $r.find("input[data-type='keyword']").val().trim(),
+        sheet:   $r.find("select[data-type='sheet']").val(),
+        type:    $r.find("select[data-type='refType']").val(),
+        value:   ""
+      };
     });
-  }
-
-  _applyZoom() {
-    const zoom = this.actor.getFlag("sheexcel", "zoomLevel") || 100;
-    if (this._iframe) {
-      this._iframe.style.transform = `scale(${zoom / 100})`;
-      this._iframe.style.transformOrigin = "top left";
-      this._iframe.style.width = `${100 * (100 / zoom)}%`;
-      this._iframe.style.height = `${100 * (100 / zoom)}%`;
+    const sheetId = this.actor.getFlag("sheexcel_updated", "sheetId");
+    if (sheetId) {
+      const updated = await batchFetchValues(sheetId, refs);
+      await this.actor.setFlag("sheexcel_updated", "cellReferences", updated);
     }
+    this.render(false);
   }
 
-  _setupHideMenu(html) {
-    const checkbox = html.find("#sheexcel-setting-hide-menu")[0];
-    if (!checkbox) return;
-    checkbox.addEventListener("change", async e => {
-      const hide = e.target.checked;
-      await this.actor.setFlag("sheexcel", "hideMenu", hide);
-      this._updateIframeSrc(hide);
-    });
+  _onToggleSidebar(event) {
+    event.preventDefault();
+    const c = !this.actor.getFlag("sheexcel_updated", "sidebarCollapsed");
+    this.actor.setFlag("sheexcel_updated", "sidebarCollapsed", c).then(() => this.render(false));
   }
 
-  _updateIframeSrc(hideMenu) {
-    if (!this._iframe) return;
-    const url = this.actor.getFlag("sheexcel", "sheetUrl");
-    if (!url) return;
-    const rm = hideMenu ? "minimal" : "embedded";
-    this._iframe.src = `${url}?embedded=true&rm=${rm}`;
+  _onToggleTab(event) {
+    event.preventDefault();
+    const tab = event.currentTarget.dataset.tab;
+    this.element.find(".sheexcel-sheet-tabs .item, .sheexcel-sidebar-tab").removeClass("active");
+    this.element.find(`.sheexcel-sidebar-tab[data-tab="${tab}"]`).addClass("active");
+    event.currentTarget.classList.add("active");
   }
 
-  getSheexcelValue(keyword) {
-    return this.actor.system?.sheexcel?.[keyword] || null;
+  _onUpdateSheet(event) {
+    event.preventDefault();
+    const url = this.element.find("#sheexcel-setting-url").val().trim();
+    if (!url) return ui.notifications.warn("Enter a valid Google Sheet URL.");
+    const match   = url.match(/\/d\/([^\/]+)/);
+    const sheetId = match?.[1];
+    if (!sheetId) return ui.notifications.error("Couldn’t extract Sheet ID.");
+    fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title&key=AIzaSyCAYacdw4aB7GtoxwnlpaF3aFZ2DgcJNHo`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+      .then(json => {
+        const names = json.sheets.map(s => s.properties.title);
+        return Promise.all([
+          this.actor.setFlag("sheexcel_updated", "sheetUrl", url),
+          this.actor.setFlag("sheexcel_updated", "sheetId", sheetId),
+          this.actor.setFlag("sheexcel_updated", "sheetNames", names)
+        ]);
+      })
+      .then(() => this.render(false))
+      .catch(() => ui.notifications.error("Failed to load sheet metadata."));
   }
 }
+
+Hooks.once("setup", () => {
+  Actors.registerSheet("sheexcel", SheexcelActorSheet, {
+    types: ["character","npc","creature","vehicle"],
+    label: "Sheexcel",
+    makeDefault: false
+  });
+});
+
+Hooks.once("ready", () => {
+  libWrapper.register(
+    "sheexcel_updated",
+    "CONFIG.Actor.documentClass.prototype.prepareDerivedData",
+    (wrapped, ...args) => {
+      wrapped(...args);
+      const refs = this.getFlag("sheexcel_updated","cellReferences") || [];
+      this.system = this.system || {};
+      this.system.sheexcel = refs.reduce((o,r) => {
+        if (r.keyword) o[r.keyword] = r.value;
+        return o;
+      }, {});
+    },
+    "WRAPPER"
+  );
+});

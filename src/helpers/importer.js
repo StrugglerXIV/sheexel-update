@@ -1,0 +1,24 @@
+// helpers/importer.js
+export async function importJsonHandler(event, actor) {
+  const file = event.currentTarget.files[0];
+  if (!file) return;
+  try {
+    const raw  = await file.text();
+    const text = raw.replace(/^\uFEFF/, "").trim();
+    if (!text) throw new Error("Empty file");
+    const json = JSON.parse(text);
+    if (!Array.isArray(json)) throw new Error("JSON must be an array");
+    const refs = json.map(r => ({
+      cell:    `${r.cell||""}`,
+      keyword: `${r.keyword||""}`,
+      sheet:   `${r.sheet||""}`,
+      type:    `${r.type||"checks"}`,
+      value:   ""
+    }));
+    // actor.setFlag instead of sheet.actor.setFlag
+    await actor.setFlag("sheexcel_updated","cellReferences", refs);
+  } catch(err) {
+    console.error("Import JSON error", err);
+    ui.notifications.error("Import failed: "+err.message);
+  }
+}

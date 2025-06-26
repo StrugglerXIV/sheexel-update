@@ -1,33 +1,24 @@
 {
-    "id": "sheexcel_updated",
-    "title": "Sheexcel Module Updated - Excel in your Sheets",
-    "description": "A simple module that brings excel to your sheets.",
-    "authors": [
-        {
-            "name": "Struggler",
-            "discord": "StrugglerXIV"
-        }
-    ],
-    "version": "0.3.4",
-    "compatibility": {
-        "minimum": "11",
-        "verified": "12",
-        "maximum": "12"
-    },
-    "esmodules": [
-        "scripts/sheexcel.js"
-    ],
-    "styles": [
-        "styles/sheexcel.css"
-    ],
-    "languages": [
-        {
-            "lang": "en",
-            "name": "English",
-            "path": "lang/en.json"
-        }
-    ],
-    "url": "https://github.com/StrugglerXIV/sheexel-update",
-    "manifest": "https://raw.githubusercontent.com/StrugglerXIV/sheexel-update/refs/heads/main/src/module.json",
-    "download": "https://github.com/StrugglerXIV/sheexel-update/releases/latest/download/sheexcel_latest.zip"
+  "id": "sheexcel_updated",
+  "title": "Sheexcel Module Updated - Excel in your Sheets",
+  "description": "A simple module that brings excel to your sheets.",
+  "authors": [
+    { "name": "Struggler", "discord": "StrugglerXIV" }
+  ],
+  "version": "0.3.4",
+  "compatibility": { "minimum": "11", "verified": "12", "maximum": "12" },
+  "esmodules": [
+    "helpers/prepareData.js",
+    "helpers/importer.js",
+    "helpers/batchFetcher.js",
+    "helpers/roller.js",
+    "scripts/sheexcel.js"
+  ],
+  "styles": [ "styles/sheexcel.css" ],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" }
+  ],
+  "url": "https://github.com/StrugglerXIV/sheexel-update",
+  "manifest": "https://raw.githubusercontent.com/StrugglerXIV/sheexel-update/refs/heads/main/src/module.json",
+  "download": "https://github.com/StrugglerXIV/sheexel-update/releases/latest/download/sheexcel_latest.zip"
 }
