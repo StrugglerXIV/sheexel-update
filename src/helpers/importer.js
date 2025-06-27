@@ -1,5 +1,5 @@
 // helpers/importer.js
-export async function importJsonHandler(event, actor) {
+export async function importJsonHandler(event, sheet) {
   const file = event.currentTarget.files[0];
   if (!file) return;
   try {
@@ -15,8 +15,8 @@ export async function importJsonHandler(event, actor) {
       type:    `${r.type||"checks"}`,
       value:   ""
     }));
-    // actor.setFlag instead of sheet.actor.setFlag
-    await actor.setFlag("sheexcel_updated","cellReferences", refs);
+    // sheet.actor.setFlag
+    await sheet.actor.setFlag("sheexcel_updated","cellReferences", refs);
   } catch(err) {
     console.error("Import JSON error", err);
     ui.notifications.error("Import failed: "+err.message);

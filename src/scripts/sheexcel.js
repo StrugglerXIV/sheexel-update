@@ -7,10 +7,8 @@ Hooks.once("init", async () => {
     "modules/sheexcel_updated/templates/partials/references-tab.hbs",
     "modules/sheexcel_updated/templates/partials/settings-tab.hbs"
   ];
-  console.log("⏳ Sheexcel loading templates from:", paths);
   try {
     await loadTemplates(paths);
-    console.log("✅ Partials loaded:", Object.keys(Handlebars.partials));
   } catch (err) {
     console.error("❌ Sheexcel | loadTemplates failed:", err);
   }
@@ -20,6 +18,7 @@ import { prepareSheetData }   from "../helpers/prepareData.js";
 import { importJsonHandler }  from "../helpers/importer.js";
 import { batchFetchValues }   from "../helpers/batchFetcher.js";
 import { handleRoll }         from "../helpers/roller.js";
+import { onSearch } 		  from "../helpers/mainSearch.js";
 
 export class SheexcelActorSheet extends ActorSheet {
   static get defaultOptions() {
@@ -57,6 +56,9 @@ export class SheexcelActorSheet extends ActorSheet {
     // Update Sheet URL
     html.find(".sheexcel-setting-update-sheet")
       .on("click", this._onUpdateSheet.bind(this));
+	
+	// Main tab search bar 
+	html.find('.sheexcel-search').on('input', onSearch.bind(this));
 
     // Reference rows: add / remove / fetch / save
     html.on("click", ".sheexcel-reference-add-button",    this._onAddReference.bind(this));
@@ -169,6 +171,11 @@ export class SheexcelActorSheet extends ActorSheet {
     if (sheetId) {
       const updated = await batchFetchValues(sheetId, refs);
       await this.actor.setFlag("sheexcel_updated","cellReferences",updated);
+	   updated.forEach((ref, idx) => {
+      this.element
+        .find(`.sheexcel-reference-row[data-index="${idx}"] .sheexcel-reference-value`)
+        .text(ref.value);
+    });
     }
     this.render(false);
   }

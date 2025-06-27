@@ -15,6 +15,9 @@
       <a class="item"       data-tab="attacks">Attacks</a>
       <a class="item"       data-tab="spells">Spells</a>
     </nav>
+	
+    <!-- ▷ Search Bar -->
+	<input class="sheexcel-search" placeholder="Name of skill"></input>
 
     <!-- ▷ Checks Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
@@ -30,6 +33,7 @@
       {{/unless}}
     </div>
 
+	
     <!-- ▷ Saves Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
       {{#each groupedReferences.saves}}
@@ -91,5 +95,8 @@
       {{/unless}}
     </div>
 
+  </div>
+    <div class="sheexcel-references-controls">
+    <button type="button" class="sheexcel-reference-save-button">Update Values</button>
   </div>
 </div>

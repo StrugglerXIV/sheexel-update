@@ -11,6 +11,10 @@
 }
 
 
+.sheexcel-roll {
+    width: 100px;
+}
+
 .sheexcel-roll-mode {
     display: flex;
 }
@@ -42,6 +46,13 @@
 .sheexcel-main-subtab-content {
   border-top: 1px solid #333;
   padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  height: 300px;
+  overflow-y: scroll;
+  border: 1px solid #000;  /* black 1-pixel border */
+  box-sizing: border-box;   /* so padding + border don’t bloat the box */
 }
 
 
@@ -101,6 +112,7 @@
 }
 
 .sheexcel-sheet .sheexcel-sidebar {
+	overflow: auto;
     position: absolute;
     display: flex;
     flex-direction: column;
