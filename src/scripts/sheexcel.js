@@ -1,5 +1,3 @@
-// modules/sheexcel_updated/sheexcel.js
-
 // 1) Preload our Handlebars partials before anything renders
 Hooks.once("init", async () => {
   const paths = [
