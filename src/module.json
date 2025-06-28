@@ -5,7 +5,7 @@
   "authors": [
     { "name": "Struggler", "discord": "StrugglerXIV" }
   ],
-  "version": "0.0.22",
+  "version": "0.0.23",
   "compatibility": { "minimum": "11", "verified": "12", "maximum": "12" },
   "esmodules": [
     "libs/FileSaver.js",
@@ -15,8 +15,7 @@
     "helpers/situational.js",
     "helpers/dmgRoller.js",
     "helpers/roller.js",
-    "helpers/mainSearch.js",
-    "dist/sheexcel.js"
+    "helpers/mainSearch.js"
   ],
   "styles": [ "styles/sheexcel.css" ],
   "languages": [
