@@ -1,31 +1,33 @@
 // helpers/roller.js
-import { promptBonus } from "./situational.js";
-import { promptDmgBonus } from "./situational.js";
 import { handleDamage } from "./dmgRoller.js";
+import { promptBonus } from "./situational.js";
+
 /**
  * Handle click on any .sheexcel-roll button in the main tab.
  * Expects the button to carry:
  *    data-value          → the attack modifier
  *    data-crit           → the numeric crit threshold
  *    data-damage         → the damage formula (e.g. "1d8+STR")
- *    data-advantage-mode → "adv", "norm", or "dis"
  */
 export async function handleRoll(event, sheet) {
   event.preventDefault();
-  const btn    = $(event.currentTarget);
+  const btn = $(event.currentTarget);
   const mod    = Number(btn.data("value")) || 0;
   const crit   = Number(btn.data("crit"))  || 20;
   const dmgF = btn.data("damage") != null ? String(btn.data("damage")).trim() : null;
   const advMode= btn.closest(".sheexcel-sidebar").find("input[name='roll-mode']:checked").val();
+  const dmgAdvMode = btn.closest(".sheexcel-sidebar").find(".sheexcel-damage-mode").val();
+  const attackName = $(btn).closest(".attack-entry").find(".attack-name").text();
+  console.log(attackName);
 
-  // situational bonus inject
-  const keyword = btn.text().trim();
+  // Use the button text as the keyword for the roll
+  const keyword = btn.closest(".sheexcel-check-entry").find(".sheexcel-check-keyword").text().trim() || btn.text().trim();
   const totalMod = mod;
-  
-    // Ask for the extra bonus formula
+
+  // Ask for the extra bonus formula
   const bonusRaw = await promptBonus(keyword);
-  if (bonusRaw === null) return;               // user cancelled entirely
-  if (!bonusRaw) bonusRaw = "";                // empty string → no extra bonus
+  if (bonusRaw === null) return; 
+  if (!bonusRaw) bonusRaw = ""; 
   
   // Validate by trying to build a Roll
   let bonusTerm = "";
@@ -40,13 +42,13 @@ export async function handleRoll(event, sheet) {
     return ui.notifications.error("Invalid bonus formula: " + bonusRaw);
   }
 
-  // build the d20 formula
+  // Build the d20 formula
   let d20;
   if (advMode === "adv") d20 = "2d20kh1";
   else if (advMode === "dis") d20 = "2d20kl1";
   else d20 = "1d20";
 
-  const formula = `${d20}${totalMod>=0?"+":""}${totalMod}${bonusTerm>=0?"+":""}${bonusTerm}`;
+  const formula = `${d20}${totalMod >= 0 ? "+" : ""}${totalMod}${bonusTerm>=0?"+":""}${bonusTerm}`;
   const roll    = new Roll(formula);
   await roll.evaluate({ async: true });
 
@@ -60,15 +62,19 @@ export async function handleRoll(event, sheet) {
   // Render the d20 roll
   await roll.toMessage({
     speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
-    flavor: `<strong>${btn.text()}</strong> → ${roll.total}` +
-            (isCrit ? ` <span class="sheexcel-crit">[CRIT!]</span>` : "")
+    flavor: `<strong>${keyword}</strong> → ${roll.total}${attackName ? ` from ${attackName}` : ""}` +
+            (isCrit ? ` <span class=\"sheexcel-crit\">[CRIT!]</span>` : "")
   });
 
-	// wherever you had your big inline if (dmgF) { … }
-	await handleDamage({
-		dmgF,        // your base damage number
-		isCrit,      // boolean from your attack-roll result
-		keyword: "Damage",
-		sheet        // your ItemSheet instance (so we can get sheet.actor)
-});
+  // Roll damage if a formula is present
+  if (dmgF) {
+    await handleDamage({
+      dmgF,        // your base damage number
+      isCrit,      // boolean from your attack-roll result
+      keyword: "Damage",
+      sheet,       // your ItemSheet instance (so we can get sheet.actor)
+      dmgAdvantage: dmgAdvMode === "advantage",
+      dmgDisadvantage: dmgAdvMode === "disadvantage"
+    });
+  }
 }

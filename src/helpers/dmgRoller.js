@@ -83,19 +83,99 @@ async function postToChat(roll, preCrit, baseFormula, doubledFormula, isCrit, ac
 }
 
 // ——————————————————————————————————————————
-// 6) MAIN ENTRY POINT  
+// ADVANTAGE DAMAGE ROLLING (double dice, drop lowest half)
 // ——————————————————————————————————————————
-export async function handleDamage({ dmgF, isCrit, keyword, sheet }) {
-  if (!dmgF) return;
+function doubleDiceInFormula(formula) {
+  console.log("Input formula:", formula);
+  // Add 'i' flag for case-insensitive match
+  const regex = /(\b)(\d*)d(\d+)(?![a-zA-Z])/gi;
+  let match;
+  let matches = [];
+  while ((match = regex.exec(formula)) !== null) {
+    matches.push(match);
+  }
+  console.log("Regex matches:", matches);
 
+  const result = formula.replace(regex, (full, pre, n, die) => {
+    console.log("Match found:", { full, pre, n, die });
+    const num = n === "" ? 1 : parseInt(n);
+    const doubled = `${pre}${num * 2}d${die}`;
+    console.log("Reeeplacing with:", doubled);
+    return doubled;
+  });
+
+  console.log("Output formula:", result);
+  return result;
+}
+
+function dropLowestDice(roll) {
+  // For each Die term, drop half the lowest results (rounded down)
+  roll.terms.forEach(term => {
+    if (term instanceof Die) {
+      const numToDrop = Math.floor(term.results.length / 2);
+      // Sort results ascending, mark the lowest as dropped
+      const sorted = [...term.results].sort((a, b) => a.result - b.result);
+      for (let i = 0; i < numToDrop; i++) {
+        sorted[i].discarded = true;
+      }
+    }
+  });
+}
+
+function dropHighestDice(roll) {
+  // For each Die term, drop half the highest results (rounded down)
+  roll.terms.forEach(term => {
+    if (term instanceof Die) {
+      const numToDrop = Math.floor(term.results.length / 2);
+      // Sort results descending, mark the highest as dropped
+      const sorted = [...term.results].sort((a, b) => b.result - a.result);
+      for (let i = 0; i < numToDrop; i++) {
+        sorted[i].discarded = true;
+      }
+    }
+  });
+}
+
+/**
+ * Roll damage with advantage/disadvantage/normal
+ * Usage: handleDamage({ ..., advantage: true }) or handleDamage({ ..., disadvantage: true })
+ */
+export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage, dmgDisadvantage }) {
+  if (!dmgF) return;
   // 6a) Bonus prompt
   const bonusRaw = await promptBonus(keyword);
   if (bonusRaw === null) return; // user cancelled
 
   // 6b) Build & roll
-  const baseFormula = buildFormula(dmgF, bonusRaw);
-  const dmgRoll = new Roll(baseFormula);
+  let baseFormula = buildFormula(dmgF, bonusRaw);
+  let formulaToRoll = baseFormula;
+  let isAdv = !!dmgAdvantage;
+  let isDis = !!dmgDisadvantage;
+  if (isAdv || isDis) formulaToRoll = doubleDiceInFormula(baseFormula);
+  console.log(formulaToRoll);
+
+  const dmgRoll = new Roll(formulaToRoll);
   await dmgRoll.evaluate({ async: true });
+
+  // 6c) Advantage/Disadvantage: drop half dice
+  if (isAdv) dropLowestDice(dmgRoll);
+  if (isDis) dropHighestDice(dmgRoll);
+
+  // Recompute total to ignore discarded dice
+  dmgRoll._total = dmgRoll.terms.reduce((sum, term, i) => {
+    const prev = dmgRoll.terms[i - 1];
+    const op = (prev?.constructor.name === "OperatorTerm" ? prev.operator : "+");
+
+    if (term instanceof Die) {
+      // Only sum non-discarded results
+      const subtotal = term.results.filter(r => !r.discarded).reduce((a, r) => a + r.result, 0);
+      return sum + (op === "-" ? -subtotal : subtotal);
+    }
+    if (term instanceof NumericTerm) {
+      return sum + (op === "-" ? -term.number : term.number);
+    }
+    return sum;
+  }, 0);
 
   // 6c) Capture pre-crit dice
   const preCrit = dmgRoll.terms

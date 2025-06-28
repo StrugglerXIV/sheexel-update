@@ -22,3 +22,16 @@ export async function importJsonHandler(event, sheet) {
     ui.notifications.error("Import failed: "+err.message);
   }
 }
+
+// Export references as JSON file
+export async function exportJsonHandler(sheet) {
+  try {
+    const refs = await sheet.actor.getFlag("sheexcel_updated", "cellReferences") || [];
+    const json = JSON.stringify(refs, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    saveAs(blob, "JasterSheet.json");
+  } catch (err) {
+    console.error("Export JSON error", err);
+    ui.notifications.error("Export failed: " + err.message);
+  }
+}

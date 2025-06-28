@@ -3,8 +3,8 @@
 
     <!-- ▷ Roll Mode Selector -->
     <div class="sheexcel-roll-mode">
-      <label><input type="radio" name="roll-mode" value="adv" checked> Advantage</label>
-      <label><input type="radio" name="roll-mode" value="norm"> Normal</label>
+      <label><input type="radio" name="roll-mode" value="adv"> Advantage</label>
+      <label><input type="radio" name="roll-mode" value="norm" checked> Normal</label>
       <label><input type="radio" name="roll-mode" value="dis"> Disadvantage</label>
     </div>
 
@@ -20,18 +20,19 @@
 	<input class="sheexcel-search" placeholder="Name of skill"></input>
 
     <!-- ▷ Checks Pane -->
-    <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
-      {{#each groupedReferences.checks}}
-        <div>
-          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
-            {{this.keyword}}
-          </button> → {{this.value}}
-        </div>
-      {{/each}}
-      {{#unless groupedReferences.checks.length}}
-        <i>No checks defined</i>
-      {{/unless}}
+<div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
+  {{#each groupedReferences.checks}}
+    <div class="sheexcel-check-entry">
+      <span class="sheexcel-check-value">→ {{this.value}}</span>
+      <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
+      </button>
+      <span class="sheexcel-check-keyword">{{this.keyword}}</span>
     </div>
+  {{/each}}
+  {{#unless groupedReferences.checks.length}}
+    <i>No checks defined</i>
+  {{/unless}}
+</div>
 
 	
     <!-- ▷ Saves Pane -->
@@ -51,9 +52,14 @@
   <!-- ▷ Attacks Pane -->
 <div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
   {{#each groupedReferences.attacks}}
+    <select class="sheexcel-damage-mode">
+  <option value="normal">Normal</option>
+  <option value="advantage">Advantage</option>
+  <option value="disadvantage">Disadvantage</option>
+  </select>
     <div class="attack-entry">
       <!-- 1) Show the fetched attack name -->
-      <strong>{{this.attackName}}</strong><br>
+      <strong class="attack-name">{{this.attackName}}</strong><br>
 
       <!-- 2) Roll button carries mod, crit threshold, and damage formula -->
       <button

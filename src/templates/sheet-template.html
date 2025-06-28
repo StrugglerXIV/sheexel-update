@@ -1,29 +1,28 @@
 <form class="{{cssClass}} sheexcel-sheet" autocomplete="off">
-  <header class="sheexcel-sheet-header"><h1>{{actor.name}}</h1></header>
-  <section class="sheexcel-sheet-body">
+  <header class="sheexcel-sheet-header">
+    <h1>{{actor.name}}</h1>
+  </header>
+  <section class="sheexcel-sheet-body sheexcel-sheet-flex">
+    <div class="sheexcel-sheet-google-wrapper">
+      <iframe class="sheexcel-google-sheet" src="{{sheetUrl}}" frameborder="0" allowfullscreen></iframe>
+      <div class="sheexcel-sheet-resizer" title="Drag to resize"></div>
+    </div>
     <div class="sheexcel-main-content">
-      {{#if sheetUrl}}
-        <iframe
-          class="sheexcel-iframe"
-          src="{{sheetUrl}}?embedded=true&rm={{#if hideMenu}}minimal{{else}}embedded{{/if}}"
-          frameborder="0"></iframe>
-      {{else}}
-        <p>No sheet URL set. Enter one in Settings.</p>
-      {{/if}}
+      <!-- Primary Tabs -->
+      <nav class="sheexcel-sheet-tabs tabs" data-group="primary">
+        <a class="sheexcel-sheet-toggle" title="Toggle Sidebar">
+          <i class="fas fa-bars"></i>
+        </a>
+        <a class="item active sheexcel-sheet-main" data-tab="main">Main</a>
+        <a class="item sheexcel-sheet-references" data-tab="references">References</a>
+        <a class="item sheexcel-sheet-settings" data-tab="settings"></a>
+      </nav>
+
+      <div class="sheexcel-sidebar {{#if sidebarCollapsed}}collapsed{{/if}}">
+        {{> "modules/sheexcel_updated/templates/partials/main-tab.hbs"}}
+        {{> "modules/sheexcel_updated/templates/partials/references-tab.hbs"}}
+        {{> "modules/sheexcel_updated/templates/partials/settings-tab.hbs"}}
+      </div>
     </div>
   </section>
-
-  <!-- Primary Tabs -->
-  <nav class="sheexcel-sheet-tabs tabs" data-group="primary">
-    <a class="sheexcel-sheet-toggle">…</a>
-    <a class="item active sheexcel-sheet-main"       data-tab="main">Main</a>
-    <a class="item sheexcel-sheet-references" data-tab="references">References</a>
-    <a class="item sheexcel-sheet-settings"   data-tab="settings">Settings</a>
-  </nav>
-
- <div class="sheexcel-sidebar {{#if sidebarCollapsed}}collapsed{{/if}}">
-    {{> "modules/sheexcel_updated/templates/partials/main-tab.hbs"}}
-    {{> "modules/sheexcel_updated/templates/partials/references-tab.hbs"}}
-    {{> "modules/sheexcel_updated/templates/partials/settings-tab.hbs"}}
-  </div>
 </form>

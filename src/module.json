@@ -8,6 +8,7 @@
   "version": "0.4.0",
   "compatibility": { "minimum": "11", "verified": "12", "maximum": "12" },
   "esmodules": [
+    "libs/FileSaver.js",
     "helpers/prepareData.js",
     "helpers/importer.js",
     "helpers/batchFetcher.js",
@@ -15,7 +16,7 @@
     "helpers/dmgRoller.js",
     "helpers/roller.js",
     "helpers/mainSearch.js",
-    "scripts/sheexcel.js"
+    "dist/sheexcel.js"
   ],
   "styles": [ "styles/sheexcel.css" ],
   "languages": [

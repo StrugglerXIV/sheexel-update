@@ -10,7 +10,7 @@
  * @returns {Promise<Array<Object>>}  The same refs array, with .value, .attackName, .critRange, .damage populated
  */
 export async function batchFetchValues(sheetId, refs) {
-  const apiKey = "AIzaSyCAYacdw4aB7GtoxwnlpaF3aFZ2DgcJNHo";
+  const apiKey = game.settings.get("sheexcel_updated", "googleApiKey");
 
   // Build a list of queries, one per referenced cell
   const queries = refs.flatMap((r, idx) => {

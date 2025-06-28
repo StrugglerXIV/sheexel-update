@@ -12,10 +12,20 @@ Hooks.once("init", async () => {
   } catch (err) {
     console.error("❌ Sheexcel | loadTemplates failed:", err);
   }
+  // API Key setting
+  game.settings.register("sheexcel_updated", "googleApiKey", {
+  name: "Google Sheets API Key",
+  hint: "Enter your Google Sheets API key here.",
+  scope: "world",
+  config: true,
+  type: String,
+  default: "",
+});
 });
 
 import { prepareSheetData }   from "../helpers/prepareData.js";
 import { importJsonHandler }  from "../helpers/importer.js";
+import { exportJsonHandler }  from "../helpers/importer.js";
 import { batchFetchValues }   from "../helpers/batchFetcher.js";
 import { handleRoll }         from "../helpers/roller.js";
 import { onSearch } 		  from "../helpers/mainSearch.js";
@@ -42,6 +52,28 @@ export class SheexcelActorSheet extends ActorSheet {
     // 2) then augment with our flags, passing (data, actor)
     return prepareSheetData(data, this.actor);
   }
+
+  /** Show/hide attack-specific fields when refType changes */
+_onRefTypeChange(event) {
+  const $select = $(event.currentTarget);
+  const $row = $select.closest(".sheexcel-reference-row");
+  // Remove any existing attack-specific fields
+  $row.find(".sheexcel-attack-fields").remove();
+
+  if ($select.val() === "attacks") {
+    // Add attack-specific fields
+    const idx = $row.data("index");
+    const attackFields = $(`
+      <div class="sheexcel-attack-fields">
+        <input class="sheexcel-reference-input" data-type="attackNameCell" data-index="${idx}" placeholder="Attack Name Cell">
+        <input class="sheexcel-reference-input" data-type="critRangeCell" data-index="${idx}" placeholder="Crit Range Cell">
+        <input class="sheexcel-reference-input" data-type="damageCell" data-index="${idx}" placeholder="Damage Cell">
+      </div>
+    `);
+    // Insert after the refType select
+    $row.find("select[data-type='refType']").after(attackFields);
+  }
+}
 
   /** Wire up all UI interactions */
   activateListeners(html) {
@@ -71,6 +103,8 @@ export class SheexcelActorSheet extends ActorSheet {
       .on("click", () => html.find("#sheexcel-json-file").click());
     html.find("#sheexcel-json-file")
       .on("change", e => importJsonHandler(e, this).then(() => this.render(false)));
+    // Export JSON
+    html.find('.sheexcel-export-json').on('click', () => exportJsonHandler(this));
 
     // Main subtabs and roll clicks
     html.find(".sheexcel-main-subtab-nav a.item")
@@ -80,6 +114,12 @@ export class SheexcelActorSheet extends ActorSheet {
 
     // Activate initial subtab
     html.find(".sheexcel-main-subtab-nav a.item.active").click();
+    html.on("change", "select.sheexcel-reference-input[data-type='refType']", this._onRefTypeChange.bind(this));
+    
+    // Set sidebar collapsed state on initial render
+    const c = this.actor.getFlag("sheexcel_updated", "sidebarCollapsed");
+    html.find('.sheexcel-sidebar').toggleClass('collapsed', !!c);
+  
   }
 
   /** Switch which main-subtab pane is visible */
@@ -101,7 +141,7 @@ export class SheexcelActorSheet extends ActorSheet {
     const options   = sheets.map(n => `<option value="${n}">${n}</option>`).join("");
     const row = $(`
       <div class="sheexcel-reference-row" data-index="${idx}">
-        <input class="sheexcel-reference-input" data-type="cell"    data-index="${idx}" placeholder="Cell">
+        <input class="sheexcel-reference-input" data-type="cell"    data-index="${idx}" placeholder="Bonus">
         <input class="sheexcel-reference-input" data-type="keyword" data-index="${idx}" placeholder="Keyword">
         <select class="sheexcel-reference-input" data-type="sheet"  data-index="${idx}">${options}</select>
         <select class="sheexcel-reference-input" data-type="refType" data-index="${idx}">
@@ -127,7 +167,7 @@ export class SheexcelActorSheet extends ActorSheet {
 
   /** Fetch & update one cell’s value, then re-render */
   async _onFetchAndUpdateCellValueByIndex(index) {
-    const refs    = foundry.utils.deepClone(await this.actor.getFlag("sheexcel_updated","cellReferences") || []);
+    const refs    = foundry.utils.deepClone(this.actor.getFlag("sheexcel_updated","cellReferences") || []);
     const sheetId = this.actor.getFlag("sheexcel_updated","sheetId");
     if (!refs[index] || !sheetId) return;
 
@@ -137,7 +177,8 @@ export class SheexcelActorSheet extends ActorSheet {
       : sheet;
     const range = `${safeSheet}!${cell}`;
     try {
-      const res  = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=AIzaSyCAYacdw4aB7GtoxwnlpaF3aFZ2DgcJNHo`);
+      const apiKey = game.settings.get("sheexcel_updated", "googleApiKey");
+      const res  = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`);
       if (!res.ok) throw new Error(res.statusText);
       const json = await res.json();
       refs[index].value = json.values?.[0]?.[0] || "";
@@ -181,11 +222,12 @@ export class SheexcelActorSheet extends ActorSheet {
   }
 
   /** Toggle the sidebar collapsed state */
-  _onToggleSidebar(event) {
-    event.preventDefault();
-    const c = !this.actor.getFlag("sheexcel_updated","sidebarCollapsed");
-    this.actor.setFlag("sheexcel_updated","sidebarCollapsed",c).then(() => this.render(false));
-  }
+_onToggleSidebar(event) {
+  event.preventDefault();
+  const c = !this.actor.getFlag("sheexcel_updated", "sidebarCollapsed");
+  this.element.find('.sheexcel-sidebar').toggleClass('collapsed', c);
+  this.actor.setFlag("sheexcel_updated","sidebarCollapsed",c);
+}
 
   /** Switch primary sidebar tabs */
   _onToggleTab(event) {
@@ -204,7 +246,8 @@ export class SheexcelActorSheet extends ActorSheet {
     const match   = url.match(/\/d\/([^\/]+)/);
     const sheetId = match?.[1];
     if (!sheetId) return ui.notifications.error("Couldn’t extract Sheet ID.");
-    fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title&key=AIzaSyCAYacdw4aB7GtoxwnlpaF3aFZ2DgcJNHo`)
+    const apiKey = game.settings.get("sheexcel_updated", "googleApiKey");
+    fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title&key=${apiKey}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(json => {
         const names = json.sheets.map(s => s.properties.title);
@@ -244,4 +287,27 @@ Hooks.once("ready", () => {
     },
     "WRAPPER"
   );
+});
+
+Hooks.on("renderActorSheet", (app, html, data) => {
+  const wrapper = html.find('.sheexcel-sheet-google-wrapper');
+  const resizer = html.find('.sheexcel-sheet-resizer');
+  let isResizing = false;
+  let startY, startHeight;
+
+  resizer.on('mousedown', function(e) {
+    isResizing = true;
+    startY = e.clientY;
+    startHeight = wrapper.height();
+    $(document).on('mousemove.sheexcelResize', function(e) {
+      if (!isResizing) return;
+      let newHeight = Math.max(100, startHeight + (e.clientY - startY));
+      wrapper.height(newHeight);
+    });
+    $(document).on('mouseup.sheexcelResize', function() {
+      isResizing = false;
+      $(document).off('.sheexcelResize');
+    });
+    e.preventDefault();
+  });
 });

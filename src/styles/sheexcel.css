@@ -1,227 +1,665 @@
+/* --- General --- */
 .sheexcel-sheet {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 5px 5px;
-    position: relative;
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    background: linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    color: #c7a86d;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 0;
+    max-width: 1000px;
+    border: 2px solid #2d1a0f;
+    background: linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    box-shadow: 0 6px 32px #000a, 0 0 0 4px #c7a86d44;
 }
+
 .sheexcel-crit {
-  color: #0f0;
+  color: #bfa05a;
   font-weight: bold;
 }
 
-
-.sheexcel-roll {
-    width: 100px;
+/* --- Sidebar Tabs --- */
+.sheexcel-sidebar-tab {
+    background: #241a13;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    padding: 18px 16px 12px 16px;
+    margin-bottom: 10px;
+    min-width: 250px;
 }
 
-.sheexcel-roll-mode {
-    display: flex;
+.sheexcel-sidebar-tab h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    color: #bfa05a;
+    letter-spacing: 1px;
+    font-weight: 700;
 }
 
-.sheexcel-reference-row {
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
+/* --- Subtab Navigation --- */
 .sheexcel-main-subtab-nav {
-  display: flex;
-  margin-bottom: 0.5rem;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
 }
 
 .sheexcel-main-subtab-nav .item {
-  padding: 0.3rem 0.6rem;
-  border: 1px solid #444;
-  background: #222;
-  color: #eee;
-  cursor: pointer;
-  border-radius: 4px;
+    padding: 0.4rem 1.2rem;
+    border: none;
+    background: #2d1a0f;
+    color: #c7a86d;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
 }
 
 .sheexcel-main-subtab-nav .item.active {
-  background: #555;
+    background: #bfa05a;
+    color: #1a140f;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(191,160,90,0.08);
 }
 
-.sheexcel-main-subtab-content {
-  border-top: 1px solid #333;
-  padding-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  height: 300px;
-  overflow-y: scroll;
-  border: 1px solid #000;  /* black 1-pixel border */
-  box-sizing: border-box;   /* so padding + border don’t bloat the box */
-}
-
-
-.sheexcel-sheet .sheexcel-sheet-header {
-    flex: 0 0 auto;
-    padding: 0px 265px 0px 0px;
-    border-bottom: 1px solid #ddd;
-}
-
-.sheexcel-sheet .sheexcel-sheet-body {
-    flex: 1;
-    overflow: hidden;
+/* --- Roll Mode Selector --- */
+.sheexcel-roll-mode {
     display: flex;
-    flex-direction: column;
-}
-
-.sheexcel-sheet .sheexcel-main-content {
-    flex: 1;
-    overflow: hidden;
-}
-
-.sheexcel-sheet .sheexcel-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-
-.sheexcel-sheet .sheexcel-sheet-tabs {
-    position: absolute;
-    flex-direction: row;
-    top: 5px;
-    right: 5px;
-    width: 258px;
-    height: 35px;
-    background: #eeeeee;
-    color: #151515;
-    border: none;
-}
-
-.sheexcel-sheet .sheexcel-sheet-tabs a {
-    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    align-items: center;
+    font-size: 1rem;
     justify-content: center;
-    align-items: center;
+}
+
+.sheexcel-roll-mode label {
+    cursor: pointer;
+    font-weight: 500;
+    color: #c7a86d;
+}
+
+.sheexcel-roll-mode input[type="radio"] {
+    accent-color: #bfa05a;
+    margin-right: 0.3em;
+}
+
+/* --- Search Bar --- */
+.sheexcel-search {
     width: 100%;
-    height: 100%;
-    padding: 0;
+    padding: 0.5em 1em;
+    border: 1px solid #3a2a1a;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    background: #1a140f;
+    transition: border 0.2s;
+    border: 1.5px solid #bfa05a;
+    background: #1a140f;
+    color: #e7d7b1;
 }
 
-.sheexcel-sheet .sheexcel-sheet-tabs a:hover {
-    background-color: rgba(0, 0, 0, 0.1);
+/* Make placeholder text more readable */
+.sheexcel-search::placeholder {
+    color: #bfa05a;
+    opacity: 1;
 }
 
-.sheexcel-sheet .sheexcel-sheet-tabs a.active {
-    box-shadow: inset 0 0 5px rgba(255, 165, 0, 0.2),
-               inset 0 0 10px rgba(255, 100, 0, 0.3);
-    transition: box-shadow 0.3s ease;
+.sheexcel-search:focus {
+    border: 2px solid #c7a86d;
+    background: #2d1a0f;
+    color: #c7a86d;
 }
 
-.sheexcel-sheet .sheexcel-sidebar {
-	overflow: auto;
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    top: 50px;
-    right: 5px;
-    bottom: 5px;
-    width: 258px;
-    background-color: #f0f0f0;
-    color: #151515;
-    padding: 10px 10px;
-    transition: transform 0.3s ease;
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-    z-index: 100;
-}
-
-.sheexcel-sheet .sheexcel-sidebar.collapsed {
-    transform: translateX(calc(100% + 20px));
-}
-
-.sheexcel-sheet .sheexcel-sidebar-tab {
-    flex-direction: column;
-    height: 100%;
-}
-
-.sheexcel-sheet .sheexcel-sidebar-tab-icon {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-}
-
-.sheexcel-sheet .sheexcel-references-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-.sheexcel-sheet .sheexcel-references {
-    flex-grow: 1;
-    overflow-x: hidden;
+/* --- Subtab Content --- */
+.sheexcel-main-subtab-content {
+    background: url('https://www.transparenttextures.com/patterns/old-mathematics.png'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    border: 1.5px solid #bfa05a;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px #0008;
+    color: #c7a86d;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    min-height: 120px;
+    height: auto;
     overflow-y: auto;
 }
 
-.sheexcel-sheet .sheexcel-reference-cell {
-    flex: 1;
-    flex-direction: row;
-    padding: 5px 5px;
-    margin-bottom: 5px;
-    width: 100%;
-    justify-self: center;
-    background-color: #ffffff;
+.sheexcel-sheet-settings {
+    opacity: 50%;
+    background: url('../assets/ui/Options.PNG');
+    background-size: cover;
+    height: 30px;
+    width: 100px;
 }
 
-.sheexcel-sheet .sheexcel-reference-cell input#sheexcel-cell {
-    width: 38px;
+
+/* --- Roll Buttons --- */
+.sheexcel-roll {
+    height: 50px;
+    max-height: 50px;
+    min-height: 50px;
+    background: linear-gradient(90deg, #bfa05a 60%, #c7a86d 100%);
+    color: #1a140f;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4em 1.2em;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 0.5em;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(191,160,90,0.08);
 }
 
-.sheexcel-sheet .sheexcel-reference-cell input#sheexcel-keyword {
-    width: 98px;
+.sheexcel-roll:hover {
+    background: linear-gradient(90deg, #c7a86d 60%, #bfa05a 100%);
+    box-shadow: 0 2px 8px rgba(191,160,90,0.15);
 }
 
-.sheexcel-sheet .sheexcel-reference-cell select#sheexcel-sheet {
-    max-width: 75px;
+/* --- Attack Entry --- */
+.attack-entry {
+    background: #241a13;
+    border: 1px solid #bfa05a;
+    border-radius: 6px;
+    padding: 0.7em 1em;
+    margin-bottom: 0.7em;
+    box-shadow: 0 1px 4px rgba(191,160,90,0.04);
 }
 
-.sheexcel-sheet .sheexcel-reference-remove {
-    flex-direction: row;
-    justify-content: stretch;
-    margin-top: 5px;
+.attack-entry .attack-name {
+    font-weight: bold;
+    color: #bfa05a;
+    font-size: 1.1em;
 }
 
-.sheexcel-sheet .sheexcel-reference-remove-value {
-    text-align: center;
-    width: 100%;
+.attack-entry small {
+    color: #7c5a2a;
+    font-size: 0.95em;
 }
 
-.sheexcel-sheet .sheexcel-reference-remove-button {
-    width: 143px;
+/* --- Damage Mode Dropdown --- */
+.sheexcel-damage-mode {
+    margin-top: 0.5em;
+    padding: 0.3em 1em;
+    border-radius: 6px;
+    border: 1px solid #bfa05a;
+    background: #241a13;
+    color: #bfa05a;
+    font-weight: 600;
 }
 
-.sheexcel-sheet .sheexcel-reference-remove-save {
+/* --- References Tab --- */
+.sheexcel-references {
+    margin-bottom: 1em;
+}
+
+.sheexcel-reference-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    align-items: center;
+    background: #241a13;
+    border-radius: 6px;
+    padding: 0.5em 0.7em;
+    margin-bottom: 0.5em;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.sheexcel-sidebar.collapsed {
     display: none;
 }
 
-.sheexcel-sheet .sheexcel-references-add {
-    flex-shrink: 0;
-    margin-top: auto;
+.sheexcel-reference-input,
+.sheexcel-reference-row select {
+    border: 1px solid #bfa05a;
+    border-radius: 4px;
+    padding: 0.3em 0.7em;
+    font-size: 1em;
+    background: #1a140f;
+    color: #c7a86d !important;
+    transition: border 0.2s;
 }
 
-.sheexcel-sheet .sheexcel-settings-container {
+.sheexcel-reference-input:focus,
+.sheexcel-reference-row select:focus {
+    border: 1.5px solid #c7a86d !important;
+    outline: none;
+}
+
+.sheexcel-reference-remove-button {
+    background: #7c2a1a;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3em 0.8em;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.sheexcel-reference-remove-button:hover {
+    background: #bfa05a;
+    color: #1a140f;
+}
+
+.sheexcel-reference-value {
+    font-family: monospace;
+    color: #bfa05a;
+    margin-left: 0.5em;
+    font-size: 0.95em;
+}
+
+/* --- References Controls --- */
+.sheexcel-references-controls {
+    display: flex;
+    gap: 0.7em;
+    justify-content: flex-end;
+    margin-top: 1em;
+}
+
+.sheexcel-reference-save-button,
+.sheexcel-reference-add-button,
+.sheexcel-import-json,
+.sheexcel-export-json {
+    background: #bfa05a;
+    color: #1a140f;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1.2em;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(191,160,90,0.08);
+}
+
+.sheexcel-reference-save-button:hover,
+.sheexcel-reference-add-button:hover,
+.sheexcel-import-json:hover,
+.sheexcel-export-json:hover {
+    background: #c7a86d;
+    color: #1a140f;
+}
+
+/* --- Settings Tab --- */
+.sheexcel-settings-container {
+    background: #241a13;
+    border-radius: 6px;
+    padding: 1em;
+    margin-bottom: 1em;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    flex-direction: column;
+}
+
+.sheexcel-settings-container input[type="text"] {
+    flex: 1;
+    padding: 0.4em 1em;
+    border: 1px solid #bfa05a;
+    border-radius: 6px;
+    font-size: 1em;
+    background: #1a140f;
+    color: #c7a86d;
+}
+
+.sheexcel-settings-container button {
+    background: #bfa05a;
+    color: #1a140f;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1.2em;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.sheexcel-settings-container button:hover {
+    background: #c7a86d;
+}
+
+.sheexcel-settings-container input[type="range"] {
+    accent-color: #bfa05a;
+}
+
+.sheexcel-settings-container label {
+    font-weight: 500;
+    color: #c7a86d;
+    margin-left: 0.5em;
+}
+
+/* --- Misc --- */
+.sheexcel-sheet-header h1 {
+    font-size: 1.5rem;
+    color: #bfa05a;
+    margin: 0 0 0.5em 0;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.sheexcel-sheet-tabs {
+    margin-top: 30px;
+    background: #241a13;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    margin-bottom: 0.5em;
+    padding: 0.2em 0.5em;
+    gap: 0.5em;
+}
+
+.sheexcel-sheet-tabs .item {
+    color: #bfa05a;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.4em 1.2em;
+    transition: background 0.2s, color 0.2s;
+}
+
+.sheexcel-sheet-tabs .item.active {
+    opacity: 100%;
+}
+
+.sheexcel-sheet-tabs .sheexcel-sheet-toggle {
+    background: none;
+    border: none;
+    color: #7c5a2a;
+    font-size: 1.2em;
+    margin-right: 0.5em;
+    cursor: pointer;
+    padding: 0.2em 0.5em;
+}
+
+.sheexcel-sheet-tabs .sheexcel-sheet-toggle:hover {
+    color: #bfa05a;
+}
+
+/* --- Checks Card Entry --- */
+.sheexcel-check-entry {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
+    border: 2px solid #bfa05a;
+    border-radius: 10px;
+    margin-bottom: 0.7em;
+    padding: 0.7em 1.2em;
+    box-shadow: 0 1px 4px rgba(191,160,90,0.04);
+    transition: box-shadow 0.2s, border 0.2s;
+    background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
+    border: 2px solid #bfa05a;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px #bfa05a22;
+    color: #c7a86d;
+    font-family: 'Georgia', 'Garamond', serif;
+}
+
+.sheexcel-check-entry:hover {
+    box-shadow: 0 4px 16px rgba(191,160,90,0.10);
+    border: 2px solid #c7a86d;
+    box-shadow: 0 4px 24px #bfa05a55;
+}
+
+.sheexcel-check-value {
+    font-family: monospace;
+    color: #1a140f;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-right: 0.5em;
+    background: linear-gradient(120deg, #bfa05a 60%, #c7a86d 100%);
+    color: #1a140f;
+    border-radius: 50%;
+    border: 2px solid #c7a86d;
+    box-shadow: 0 2px 8px #bfa05a88;
+    padding: 0.2em 0.7em;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-right: 0.7em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Checks Keyword: more readable --- */
+.sheexcel-check-keyword {
+    width: 200px;
+    color: #bfa05a;
+    font-weight: 700;
+    font-size: 1.1em;
+    margin-left: 0.5em;
+    text-shadow: 0 1px 0 #1a140f;
+}
+
+/* --- Flex Layout for Sheet and Tabs --- */
+.sheexcel-sheet-flex {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding: 5px 5px;
-    margin-bottom: 5px;
+    height: 80vh;
+    min-height: 500px;
+    position: relative;
+}
+
+.sheexcel-sheet-google-wrapper {
     width: 100%;
-    justify-self: center;
+    position: relative;
+    min-height: 700px;
+    height: 80px;
+    transition: height 0.1s;
+    flex-shrink: 0;
+}
+
+.sheexcel-main-content {
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.sheexcel-google-sheet {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #241a13;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+
+/* --- Google Sheet Resizer Bar --- */
+.sheexcel-sheet-resizer {
+    width: 100%;
+    height: 18px; /* Thick and easy to grab */
+    background: linear-gradient(90deg, #bfa05a 40%, #c7a86d 100%);
+    cursor: row-resize;
+    position: absolute;
+    left: 0;
+    z-index: 20;
+    border-radius: 0 0 8px 8px;
+    opacity: 0.85;
+    transition: opacity 0.2s;
+    box-shadow: 0 2px 8px rgba(191,160,90,0.10);
+    display: flex;
     align-items: center;
-    text-align: center;
-    background-color: #ffffff;
+    justify-content: center;
+}
+.sheexcel-sheet-resizer:hover {
+    opacity: 1;
 }
 
-.sheexcel-sheet input.sheexcel-settings-container {
-    width: 100%;
+/* Optional: Add a subtle "grip" indicator */
+.sheexcel-sheet-resizer::after {
+    content: "";
+    display: block;
+    width: 60px;
+    height: 5px;
+    border-radius: 3px;
+    background: #bfa05a66;
+    margin: 0 auto;
 }
 
-.sheexcel-sheet #sheexcel-settings-zoom-value {
-    min-width: 40px;
-    text-align: center;
+/* --- Path of Exile Theme Enhancements --- */
+
+/* Cover the entire button with the background image */
+.sheexcel-main-subtab-content[data-tab="checks"] .sheexcel-roll {
+    position: relative;
+    overflow: hidden;
+    height: 56px;
+    min-width: 220px;
+    max-width: 100%;
+    border: 2.5px solid #bfa05a;
+    border-radius: 12px;
+    background:
+        linear-gradient(120deg, #bfa05a88 0%, #c7a86d44 100%),
+        url('../assets/ui/chaosorb.png') center center/48px 48px no-repeat,
+        #1a140f;
+    box-shadow:
+        0 0 16px 4px #bfa05a55,
+        0 2px 12px #000a;
+    color: #fffbe6;
+    font-family: 'Georgia', 'Garamond', serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-shadow:
+        0 2px 8px #000c,
+        0 1px 0 #bfa05a88;
+    cursor: pointer;
+    transition:
+        box-shadow 0.2s,
+        border-color 0.2s,
+        background 0.2s,
+        color 0.2s;
+    padding: 0 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.sheexcel-main-subtab-content[data-tab="checks"] .sheexcel-roll::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, #1a140f88 40%, #2d1a0fcc 100%);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.sheexcel-main-subtab-content[data-tab="checks"] .sheexcel-roll:hover,
+.sheexcel-main-subtab-content[data-tab="checks"] .sheexcel-roll:focus {
+    border-color: #ffd700;
+    box-shadow:
+        0 0 32px 8px #ffd70099,
+        0 2px 16px #bfa05a88,
+        0 2px 16px #000a;
+    color: #fffbe6;
+    background:
+        linear-gradient(120deg, #ffd70088 0%, #c7a86d66 100%),
+        url('../assets/ui/chaosorb.png') center center/cover no-repeat,
+        #1a140f;
+}
+
+.sheexcel-main-subtab-content[data-tab="checks"] .sheexcel-roll span {
+    position: relative;
+    z-index: 1;
+    /* Optional: add a subtle gold glow to text */
+    text-shadow:
+        0 2px 8px #000c,
+        0 0 6px #ffd70088,
+        0 1px 0 #bfa05a88;
+}
+
+/* Subtab Navigation - Path of Exile style */
+.sheexcel-main-subtab-nav {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1.2rem;
+    justify-content: center;
+    background: none;
+    padding: 0.2em 0.5em;
+}
+
+.sheexcel-main-subtab-nav .item {
+    padding: 0.5rem 2.2rem;
+    border: 2px solid #bfa05a;
+    background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
+    color: #bfa05a;
+    border-radius: 10px 10px 0 0;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: 'Georgia', 'Garamond', serif;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 8px #0006;
+    transition: 
+        background 0.2s, 
+        color 0.2s, 
+        border-color 0.2s, 
+        box-shadow 0.2s;
+    position: relative;
+    z-index: 2;
+}
+
+.sheexcel-main-subtab-nav .item:not(.active):hover {
+    background: linear-gradient(90deg, #2d1a0f 60%, #bfa05a22 100%);
+    color: #c7a86d;
+    border-color: #c7a86d;
+    box-shadow: 0 4px 16px #bfa05a33;
+}
+
+.sheexcel-main-subtab-nav .item.active {
+    background: linear-gradient(90deg, #bfa05a 60%, #c7a86d 100%);
+    color: #1a140f;
+    border-color: #c7a86d;
+    box-shadow: 0 4px 24px #bfa05a88, 0 0 0 2px #c7a86d;
+    text-shadow: 0 1px 0 #fff8, 0 0 8px #fff8;
+}
+
+/* Add a subtle glow under the active tab */
+.sheexcel-main-subtab-nav .item.active::after {
+    content: "";
+    display: block;
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: -8px;
+    height: 8px;
+    border-radius: 0 0 8px 8px;
+    background: radial-gradient(ellipse at center, #bfa05a55 0%, transparent 100%);
+    z-index: -1;
+}
+
+/* --- Fancy divider under subtabs --- */
+.sheexcel-main-subtab-nav {
+    border-bottom: 2px solid #bfa05a;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px #bfa05a22;
+}
+
+/* --- Scrollbar styling for PoE look --- */
+.sheexcel-main-subtab-content {
+    scrollbar-width: thin;
+    scrollbar-color: #bfa05a #1a140f;
+}
+.sheexcel-main-subtab-content::-webkit-scrollbar {
+    width: 8px;
+    background: #1a140f;
+}
+.sheexcel-main-subtab-content::-webkit-scrollbar-thumb {
+    background: #bfa05a;
+    border-radius: 6px;
+}
+
+/* --- Checks Card Entry: PoE style --- */
+.sheexcel-check-entry {
+    background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
+    border: 2px solid #bfa05a;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px #bfa05a22;
+    color: #c7a86d;
+    font-family: 'Georgia', 'Garamond', serif;
+    margin-bottom: 1em;
+    transition: border 0.2s, box-shadow 0.2s;
+}
+.sheexcel-check-entry:hover {
+    border: 2px solid #c7a86d;
+    box-shadow: 0 4px 24px #bfa05a55;
 }
