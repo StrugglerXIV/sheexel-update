@@ -13,7 +13,13 @@ export async function importJsonHandler(event, sheet) {
       keyword: `${r.keyword||""}`,
       sheet:   `${r.sheet||""}`,
       type:    `${r.type||"checks"}`,
-      value:   ""
+      value:   `${r.value||""}`,
+      attackName: `${r.attackName||""}`,
+      critRange: `${r.critRange||""}`,
+      damage:  `${r.damage||""}`,
+      attackNameCell: `${r.attackNameCell||""}`,
+      critRangeCell: `${r.critRangeCell||""}`,
+      damageCell: `${r.damageCell||""}`
     }));
     // sheet.actor.setFlag
     await sheet.actor.setFlag("sheexcel_updated","cellReferences", refs);

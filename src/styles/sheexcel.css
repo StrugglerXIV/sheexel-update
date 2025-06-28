@@ -1,12 +1,39 @@
+/* Add this at the very top of your CSS file */
+@font-face {
+    font-family: 'Fontin';
+    src: url('/modules/sheexcel_updated/assets/fonts/fontin/Fontin-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+/* If you have bold/italic/etc, add more @font-face rules for those */
+
+/* Your existing rules */
+.window-app.sheexcel-app .window-content,
+.sheexcel-sheet {
+    font-family: 'Fontin';
+}
+
+.sheexcel-sheet, .sheexcel-sheet * {
+    font-family: 'Fontin' !important;
+}
+
+.window-app.sheexcel-app .window-content {
+    align-items: center;
+	background: url('/modules/sheexcel_updated/assets/ui/bg.jpg');
+    background-size: contain;
+    background-repeat: round;
+}
+
 /* --- General --- */
 .sheexcel-sheet {
-    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    font-family: 'Fontin';
     background: linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
     color: #c7a86d;
     border-radius: 10px;
     box-shadow: 0 2px 16px rgba(0,0,0,0.08);
     padding: 0;
     max-width: 1000px;
+    width: 1000px;
     border: 2px solid #2d1a0f;
     background: linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
     box-shadow: 0 6px 32px #000a, 0 0 0 4px #c7a86d44;
@@ -111,7 +138,7 @@
 
 /* --- Subtab Content --- */
 .sheexcel-main-subtab-content {
-    background: url('https://www.transparenttextures.com/patterns/old-mathematics.png'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
     border: 1.5px solid #bfa05a;
     border-radius: 12px;
     box-shadow: 0 2px 12px #0008;
@@ -331,11 +358,14 @@
 
 /* --- Misc --- */
 .sheexcel-sheet-header h1 {
-    font-size: 1.5rem;
+    background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    font-size: 50px;
     color: #bfa05a;
     margin: 0 0 0.5em 0;
     font-weight: 700;
     letter-spacing: 1px;
+	display: flex;
+    justify-content: center;
 }
 
 .sheexcel-sheet-tabs {
@@ -423,7 +453,7 @@
 /* --- Checks Keyword: more readable --- */
 .sheexcel-check-keyword {
     width: 200px;
-    color: #bfa05a;
+    color: #000000;
     font-weight: 700;
     font-size: 1.1em;
     margin-left: 0.5em;
@@ -553,7 +583,7 @@
     color: #fffbe6;
     background:
         linear-gradient(120deg, #ffd70088 0%, #c7a86d66 100%),
-        url('../assets/ui/chaosorb.png') center center/cover no-repeat,
+        url('../assets/ui/chaosorb.png') center center/contain no-repeat,
         #1a140f;
 }
 
@@ -562,9 +592,9 @@
     z-index: 1;
     /* Optional: add a subtle gold glow to text */
     text-shadow:
-        0 2px 8px #000c,
-        0 0 6px #ffd70088,
-        0 1px 0 #bfa05a88;
+        0 9px 95px #000c,
+        0px 0px 5px #ffd70088,
+        2px -1px 37px #bfa05a88
 }
 
 /* Subtab Navigation - Path of Exile style */
