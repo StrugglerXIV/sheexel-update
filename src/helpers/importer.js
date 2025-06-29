@@ -1,4 +1,17 @@
-// helpers/importer.js
+//import helper for ID-s
+import { randomID } from "../helpers/idGenerator.js"; // Make sure this is exported
+
+function assignIdsRecursively(check) {
+  check.id = check.id || randomID();
+  if (Array.isArray(check.subchecks)) {
+    check.subchecks = check.subchecks.map(assignIdsRecursively);
+  } else {
+    check.subchecks = [];
+  }
+  return check;
+}
+
+// Import JSON file and save references to the actor
 export async function importJsonHandler(event, sheet) {
   const file = event.currentTarget.files[0];
   if (!file) return;
@@ -8,20 +21,18 @@ export async function importJsonHandler(event, sheet) {
     if (!text) throw new Error("Empty file");
     const json = JSON.parse(text);
     if (!Array.isArray(json)) throw new Error("JSON must be an array");
-    const refs = json.map(r => ({
+    const refs = json.map(r => assignIdsRecursively({
+      ...r,
       cell:    `${r.cell||""}`,
       keyword: `${r.keyword||""}`,
       sheet:   `${r.sheet||""}`,
       type:    `${r.type||"checks"}`,
       value:   `${r.value||""}`,
-      attackName: `${r.attackName||""}`,
-      critRange: `${r.critRange||""}`,
-      damage:  `${r.damage||""}`,
       attackNameCell: `${r.attackNameCell||""}`,
       critRangeCell: `${r.critRangeCell||""}`,
-      damageCell: `${r.damageCell||""}`
+      damageCell: `${r.damageCell||""}`,
+      subchecks: Array.isArray(r.subchecks) ? r.subchecks : []
     }));
-    // sheet.actor.setFlag
     await sheet.actor.setFlag("sheexcel_updated","cellReferences", refs);
   } catch(err) {
     console.error("Import JSON error", err);

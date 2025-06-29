@@ -25,7 +25,8 @@ export async function prepareSheetData(data, actor) {
     // Attack-specific
     attackNameCell:   r.attackNameCell || "",
     critRangeCell:    r.critRangeCell  || "",
-    damageCell:       r.damageCell     || ""
+    damageCell:       r.damageCell     || "",
+    subchecks: Array.isArray(r.subchecks) ? r.subchecks : []
   }));
 
   // Group into checks/saves/attacks/spells

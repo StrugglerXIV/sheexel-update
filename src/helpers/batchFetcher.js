@@ -1,59 +1,65 @@
-// helpers/batchFetcher.js
-
-/**
- * Given a Google Sheets ID and an array of reference objects, 
- * batch-fetches the requested cell values (including extra attack fields)
- * and writes them back into each ref before returning the updated array.
- * @param {string} sheetId        The Sheets spreadsheet ID
- * @param {Array<Object>} refs     Array of refs, each with:
- *    - sheet, cell, type, attackNameCell, critRangeCell, damageCell
- * @returns {Promise<Array<Object>>}  The same refs array, with .value, .attackName, .critRange, .damage populated
- */
 export async function batchFetchValues(sheetId, refs) {
   const apiKey = game.settings.get("sheexcel_updated", "googleApiKey");
 
-  // Build a list of queries, one per referenced cell
-  const queries = refs.flatMap((r, idx) => {
-    const sheetName = r.sheet.match(/[^A-Za-z0-9_]/)
-      ? `'${r.sheet.replace(/'/g, "''")}'`
-      : r.sheet;
-    const list = [];
+  // Helper to recursively collect all queries with a path
+  function collectQueries(refs, path = []) {
+    let queries = [];
+    refs.forEach((r, idx) => {
+      const sheetName = r.sheet.match(/[^A-Za-z0-9_]/)
+        ? `'${r.sheet.replace(/'/g, "''")}'`
+        : r.sheet;
 
-    // Core value cell
-    if (r.cell) {
-      list.push({ idx, field: "value", range: `${sheetName}!${r.cell}` });
+      // Main value
+      if (r.cell) {
+        queries.push({ path: [...path, idx], field: "value", range: `${sheetName}!${r.cell}` });
+      }
+      // Attack-specific fields
+      if (r.type === "attacks") {
+        if (r.attackNameCell) {
+          queries.push({ path: [...path, idx], field: "attackName", range: `${sheetName}!${r.attackNameCell}` });
+        }
+        if (r.critRangeCell) {
+          queries.push({ path: [...path, idx], field: "critRange", range: `${sheetName}!${r.critRangeCell}` });
+        }
+        if (r.damageCell) {
+          queries.push({ path: [...path, idx], field: "damage", range: `${sheetName}!${r.damageCell}` });
+        }
+      }
+      // Recurse into subchecks
+      if (Array.isArray(r.subchecks) && r.subchecks.length) {
+        queries = queries.concat(collectQueries(r.subchecks, [...path, idx, "subchecks"]));
+      }
+    });
+    return queries;
+  }
+
+  // Helper to assign a value back into the nested structure by path
+  function assignByPath(obj, path, field, value) {
+    let ref = obj;
+    for (let i = 0; i < path.length - 1; i++) {
+      ref = ref[path[i]];
     }
+    ref[path[path.length - 1]][field] = value;
+  }
 
-    // Attack-specific fields
-    if (r.type === "attacks") {
-      if (r.attackNameCell) {
-        list.push({ idx, field: "attackName", range: `${sheetName}!${r.attackNameCell}` });
-      }
-      if (r.critRangeCell) {
-        list.push({ idx, field: "critRange", range: `${sheetName}!${r.critRangeCell}` });
-      }
-      if (r.damageCell) {
-        list.push({ idx, field: "damage", range: `${sheetName}!${r.damageCell}` });
-      }
-    }
-
-    return list;
-  });
+  // Collect all queries
+  const queries = collectQueries(refs);
 
   if (!queries.length) return refs;
 
-  // Construct the batchGet URL
+  // Build the batchGet URL for all ranges
   const rangesParam = queries.map(q => `ranges=${encodeURIComponent(q.range)}`).join("&");
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?key=${apiKey}&${rangesParam}`;
 
+  // Fetch all requested cell values in a single API call
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Google Sheets API error: ${res.status} ${res.statusText}`);
   const json = await res.json();
 
-  // Apply returned values back onto refs
+  // Assign the fetched values back to the correct fields in each ref/subcheck
   json.valueRanges.forEach((vr, i) => {
-    const { idx, field } = queries[i];
-    refs[idx][field] = vr.values?.[0]?.[0] ?? "";
+    const { path, field } = queries[i];
+    assignByPath(refs, path, field, vr.values?.[0]?.[0] ?? "");
   });
 
   return refs;

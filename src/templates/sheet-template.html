@@ -1,6 +1,27 @@
 <form class="{{cssClass}} sheexcel-sheet" autocomplete="off">
   <header class="sheexcel-sheet-header">
-    <h1>{{actor.name}}</h1>
+    <div class="sheexcel-profile-pic-wrapper">
+      <img class="sheexcel-profile-pic" src="{{actor.img}}" alt="{{actor.name}}" data-edit="img"
+        style="cursor:pointer;" />
+    </div>
+    <div class="sheexcel-sheet-header-content">
+      <input name="name" type="text" value="{{actor.name}}" class="sheexcel-actor-name" />
+    </div>
+    <div class="sheexcel-hp-orb">
+      <div class="sheexcel-hp-orb-fill"></div>
+      <div class="sheexcel-hp-orb-bubble bubble1"></div>
+      <div class="sheexcel-hp-orb-bubble bubble2"></div>
+      <div class="sheexcel-hp-orb-bubble bubble3"></div>
+      <div class="sheexcel-hp-orb-bubble bubble4"></div>
+      <div class="sheexcel-hp-orb-bubble bubble5"></div>
+      <div class="sheexcel-hp-orb-bubble bubble6"></div>
+      <div class="sheexcel-hp-orb-bubble bubble7"></div>
+      <div class="sheexcel-hp-orb-bubble bubble8"></div>
+      <div class="sheexcel-hp-orb-bubble bubble9"></div>
+      <div class="sheexcel-hp-orb-glass"></div>
+      <span class="sheexcel-hp-orb-label"></span>
+      <div class="sheexcel-hp-orb-border"></div>
+    </div>
   </header>
   <section class="sheexcel-sheet-body sheexcel-sheet-flex">
     <div class="sheexcel-sheet-google-wrapper">

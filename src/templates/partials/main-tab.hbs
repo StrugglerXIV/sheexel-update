@@ -21,12 +21,31 @@
 
     <!-- ▷ Checks Pane -->
 <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
+  <div class="sheexcel-check-dropzone"></div>
   {{#each groupedReferences.checks}}
-    <div class="sheexcel-check-entry">
+    <div class="sheexcel-check-entry" 
+         draggable="true" 
+         data-check-id="{{this.id}}" 
+         data-has-children="{{#if this.subchecks}}true{{else}}false{{/if}}">
+      {{#if this.subchecks}}
+        <button type="button" class="sheexcel-collapse-toggle" data-check-id="{{this.id}}">[–]</button>
+      {{/if}}
       <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
-      <span class="sheexcel-check-keyword">{{this.keyword}}</span>
+        <span class="sheexcel-check-keyword">{{this.keyword}}</span>
       </button>
       <span class="sheexcel-check-value"> {{this.value}}</span>
+      {{#if this.subchecks}}
+        <div class="sheexcel-subchecks">
+          {{#each this.subchecks}}
+            <div class="sheexcel-check-entry" draggable="true" data-check-id="{{this.id}}">
+              <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
+                <span class="sheexcel-check-keyword">{{this.keyword}}</span>
+              </button>
+              <span class="sheexcel-check-value"> {{this.value}}</span>
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
     </div>
   {{/each}}
   {{#unless groupedReferences.checks.length}}

@@ -12,23 +12,31 @@ import { promptBonus } from "./situational.js";
 export async function handleRoll(event, sheet) {
   event.preventDefault();
   const btn = $(event.currentTarget);
-  const mod    = Number(btn.data("value")) || 0;
-  const crit   = Number(btn.data("crit"))  || 20;
+  const mod = Number(btn.data("value")) || 0;
+  const crit = Number(btn.data("crit")) || 20;
   const dmgF = btn.data("damage") != null ? String(btn.data("damage")).trim() : null;
-  const advMode= btn.closest(".sheexcel-sidebar").find("input[name='roll-mode']:checked").val();
+  const advMode = btn.closest(".sheexcel-sidebar").find("input[name='roll-mode']:checked").val();
   const dmgAdvMode = btn.closest(".sheexcel-sidebar").find(".sheexcel-damage-mode").val();
   const attackName = $(btn).closest(".attack-entry").find(".attack-name").text();
-  console.log(attackName);
 
   // Use the button text as the keyword for the roll
-  const keyword = btn.closest(".sheexcel-check-entry").find(".sheexcel-check-keyword").text().trim() || btn.text().trim();
+  let keyword = "";
+  const $currentEntry = btn.closest(".sheexcel-check-entry");
+  if ($currentEntry.length) {
+    // For checks/subchecks
+    keyword = $currentEntry.find(".sheexcel-check-keyword").first().text().trim();
+  } else {
+    // For saves, attacks, spells: use button text
+    keyword = btn.text().trim();
+  }
+
   const totalMod = mod;
 
   // Ask for the extra bonus formula
   const bonusRaw = await promptBonus(keyword);
-  if (bonusRaw === null) return; 
-  if (!bonusRaw) bonusRaw = ""; 
-  
+  if (bonusRaw === null) return;
+  if (!bonusRaw) bonusRaw = "";
+
   // Validate by trying to build a Roll
   let bonusTerm = "";
   try {
@@ -38,7 +46,7 @@ export async function handleRoll(event, sheet) {
       // If that succeeded, we'll prefix a "+" if needed:
       bonusTerm = (bonusRaw.match(/^[+\-]/) ? "" : "+") + bonusRaw;
     }
-  } catch(err) {
+  } catch (err) {
     return ui.notifications.error("Invalid bonus formula: " + bonusRaw);
   }
 
@@ -48,22 +56,22 @@ export async function handleRoll(event, sheet) {
   else if (advMode === "dis") d20 = "2d20kl1";
   else d20 = "1d20";
 
-  const formula = `${d20}${totalMod >= 0 ? "+" : ""}${totalMod}${bonusTerm>=0?"+":""}${bonusTerm}`;
-  const roll    = new Roll(formula);
+  const formula = `${d20}${totalMod >= 0 ? "+" : ""}${totalMod}${bonusTerm >= 0 ? "+" : ""}${bonusTerm}`;
+  const roll = new Roll(formula);
   await roll.evaluate({ async: true });
 
   // Check for crit
   // extract the raw d20 result(s), before adding mod
   const terms = roll.terms.filter(t => t.faces === 20);
   const rolls = terms.flatMap(t => t.results.map(r => r.result));
-  const top   = Math.max(...rolls);
-  const isCrit= top >= crit;
+  const top = Math.max(...rolls);
+  const isCrit = top >= crit;
 
   // Render the d20 roll
   await roll.toMessage({
     speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
     flavor: `<strong>${keyword}</strong> → ${roll.total}${attackName ? ` from ${attackName}` : ""}` +
-            (isCrit ? ` <span class=\"sheexcel-crit\">[CRIT!]</span>` : "")
+      (isCrit ? ` <span class=\"sheexcel-crit\">[CRIT!]</span>` : "")
   });
 
   // Roll damage if a formula is present

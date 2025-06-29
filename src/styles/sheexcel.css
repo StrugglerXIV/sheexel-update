@@ -1,28 +1,28 @@
-/* Add this at the very top of your CSS file */
-@font-face {
-    font-family: 'Fontin';
-    src: url('/modules/sheexcel_updated/assets/fonts/fontin/Fontin-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-/* If you have bold/italic/etc, add more @font-face rules for those */
-
 /* Your existing rules */
-.window-app.sheexcel-app .window-content,
+.window-app.sheexcel .window-content,
 .sheexcel-sheet {
     font-family: 'Fontin';
 }
 
-.sheexcel-sheet, .sheexcel-sheet * {
+.sheexcel-sheet,
+.sheexcel-sheet * {
     font-family: 'Fontin' !important;
 }
 
-.window-app.sheexcel-app .window-content {
+.window-app.sheexcel .window-content {
     align-items: center;
-	background: url('/modules/sheexcel_updated/assets/ui/bg.jpg');
+    background: url('/modules/sheexcel_updated/assets/ui/bg.jpg');
     background-size: contain;
     background-repeat: round;
 }
+
+@font-face {
+    font-family: 'Fontin';
+    src: url('/modules/sheexcel_updated/assets/fonts/fontin/Fontin-Regular.otf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 
 /* --- General --- */
 .sheexcel-sheet {
@@ -30,7 +30,7 @@
     background: linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
     color: #c7a86d;
     border-radius: 10px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
     padding: 0;
     max-width: 1000px;
     width: 1000px;
@@ -39,16 +39,43 @@
     box-shadow: 0 6px 32px #000a, 0 0 0 4px #c7a86d44;
 }
 
+
+
+.sheexcel-check-dropzone {
+    min-height: 24px;
+    border: 1px dashed #888;
+    margin-bottom: 8px;
+}
+
+.sheexcel-profile-pic-wrapper {
+    display: inline-block;
+    padding: 8px; /* Adjust for border thickness */
+    border-radius: 50%;
+    background: url('/modules/sheexcel_updated/assets/ui/profile-border.png') center/cover no-repeat;
+    /* Optionally add a fallback border color */
+    box-shadow: 0 2px 12px #bfa05a55;
+}
+
+
+.sheexcel-profile-pic {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 2px 8px rgba(191, 160, 90, 0.15);
+    display: block;
+}
+
 .sheexcel-crit {
-  color: #bfa05a;
-  font-weight: bold;
+    color: #bfa05a;
+    font-weight: bold;
 }
 
 /* --- Sidebar Tabs --- */
 .sheexcel-sidebar-tab {
     background: #241a13;
     border-radius: 8px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
     padding: 18px 16px 12px 16px;
     margin-bottom: 10px;
     min-width: 250px;
@@ -85,7 +112,7 @@
     background: #bfa05a;
     color: #1a140f;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(191,160,90,0.08);
+    box-shadow: 0 2px 8px rgba(191, 160, 90, 0.08);
 }
 
 /* --- Roll Mode Selector --- */
@@ -151,7 +178,7 @@
 }
 
 .sheexcel-sheet-settings {
-    opacity: 50%;
+    opacity: 80%;
     background: url('../assets/ui/Options.PNG');
     background-size: cover;
     height: 30px;
@@ -174,12 +201,12 @@
     cursor: pointer;
     margin-right: 0.5em;
     transition: background 0.2s, box-shadow 0.2s;
-    box-shadow: 0 1px 4px rgba(191,160,90,0.08);
+    box-shadow: 0 1px 4px rgba(191, 160, 90, 0.08);
 }
 
 .sheexcel-roll:hover {
     background: linear-gradient(90deg, #c7a86d 60%, #bfa05a 100%);
-    box-shadow: 0 2px 8px rgba(191,160,90,0.15);
+    box-shadow: 0 2px 8px rgba(191, 160, 90, 0.15);
 }
 
 /* --- Attack Entry --- */
@@ -189,7 +216,7 @@
     border-radius: 6px;
     padding: 0.7em 1em;
     margin-bottom: 0.7em;
-    box-shadow: 0 1px 4px rgba(191,160,90,0.04);
+    box-shadow: 0 1px 4px rgba(191, 160, 90, 0.04);
 }
 
 .attack-entry .attack-name {
@@ -228,7 +255,7 @@
     border-radius: 6px;
     padding: 0.5em 0.7em;
     margin-bottom: 0.5em;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .sheexcel-sidebar.collapsed {
@@ -296,7 +323,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s, box-shadow 0.2s;
-    box-shadow: 0 1px 4px rgba(191,160,90,0.08);
+    box-shadow: 0 1px 4px rgba(191, 160, 90, 0.08);
 }
 
 .sheexcel-reference-save-button:hover,
@@ -313,7 +340,7 @@
     border-radius: 6px;
     padding: 1em;
     margin-bottom: 1em;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
     display: flex;
     align-items: center;
     gap: 1em;
@@ -328,6 +355,18 @@
     font-size: 1em;
     background: #1a140f;
     color: #c7a86d;
+}
+
+.sheexcel-actor-name {
+    height: 65px !important;
+    font-size: 50px !important;
+    color: #bfa05a !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+}
+
+.sheexcel-sheet-header-content {
+    text-align: center;
 }
 
 .sheexcel-settings-container button {
@@ -357,28 +396,41 @@
 }
 
 /* --- Misc --- */
-.sheexcel-sheet-header h1 {
+.sheexcel-sheet-header {
     background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
     font-size: 50px;
     color: #bfa05a;
-    margin: 0 0 0.5em 0;
     font-weight: 700;
     letter-spacing: 1px;
-	display: flex;
-    justify-content: center;
+    display: flex;
+    justify-content: start;
+    align-items: center;
 }
+
+.sheexcel-sheet-header h1 {
+    font-size: 50px;
+    color: #bfa05a;
+    font-weight: 700;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
 
 .sheexcel-sheet-tabs {
     margin-top: 30px;
     background: #241a13;
     border-radius: 8px 8px 0 0;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
     margin-bottom: 0.5em;
     padding: 0.2em 0.5em;
     gap: 0.5em;
 }
 
 .sheexcel-sheet-tabs .item {
+    font-size: 20px;
     color: #bfa05a;
     font-weight: 600;
     border-radius: 6px;
@@ -407,6 +459,7 @@
 /* --- Checks Card Entry --- */
 .sheexcel-check-entry {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 1em;
     background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
@@ -414,7 +467,7 @@
     border-radius: 10px;
     margin-bottom: 0.7em;
     padding: 0.7em 1.2em;
-    box-shadow: 0 1px 4px rgba(191,160,90,0.04);
+    box-shadow: 0 1px 4px rgba(191, 160, 90, 0.04);
     transition: box-shadow 0.2s, border 0.2s;
     background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
     border: 2px solid #bfa05a;
@@ -424,8 +477,13 @@
     font-family: 'Georgia', 'Garamond', serif;
 }
 
+.sheexcel-collapse-toggle {
+    height: 25px;
+    width: 25px;
+}
+
 .sheexcel-check-entry:hover {
-    box-shadow: 0 4px 16px rgba(191,160,90,0.10);
+    box-shadow: 0 4px 16px rgba(191, 160, 90, 0.10);
     border: 2px solid #c7a86d;
     box-shadow: 0 4px 24px #bfa05a55;
 }
@@ -490,13 +548,14 @@
     display: block;
     background: #241a13;
     border-radius: 8px 8px 0 0;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 /* --- Google Sheet Resizer Bar --- */
 .sheexcel-sheet-resizer {
     width: 100%;
-    height: 18px; /* Thick and easy to grab */
+    height: 18px;
+    /* Thick and easy to grab */
     background: linear-gradient(90deg, #bfa05a 40%, #c7a86d 100%);
     cursor: row-resize;
     position: absolute;
@@ -505,11 +564,12 @@
     border-radius: 0 0 8px 8px;
     opacity: 0.85;
     transition: opacity 0.2s;
-    box-shadow: 0 2px 8px rgba(191,160,90,0.10);
+    box-shadow: 0 2px 8px rgba(191, 160, 90, 0.10);
     display: flex;
     align-items: center;
     justify-content: center;
 }
+
 .sheexcel-sheet-resizer:hover {
     opacity: 1;
 }
@@ -619,10 +679,10 @@
     font-size: 1.1rem;
     letter-spacing: 1px;
     box-shadow: 0 2px 8px #0006;
-    transition: 
-        background 0.2s, 
-        color 0.2s, 
-        border-color 0.2s, 
+    transition:
+        background 0.2s,
+        color 0.2s,
+        border-color 0.2s,
         box-shadow 0.2s;
     position: relative;
     z-index: 2;
@@ -669,10 +729,12 @@
     scrollbar-width: thin;
     scrollbar-color: #bfa05a #1a140f;
 }
+
 .sheexcel-main-subtab-content::-webkit-scrollbar {
     width: 8px;
     background: #1a140f;
 }
+
 .sheexcel-main-subtab-content::-webkit-scrollbar-thumb {
     background: #bfa05a;
     border-radius: 6px;
@@ -689,7 +751,149 @@
     margin-bottom: 1em;
     transition: border 0.2s, box-shadow 0.2s;
 }
+
 .sheexcel-check-entry:hover {
     border: 2px solid #c7a86d;
     box-shadow: 0 4px 24px #bfa05a55;
+}
+
+.sheexcel-subchecks {
+    background-image: url('/modules/sheexcel_updated/assets/ui/rollBg.webp');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: top;
+    display: flex;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+}
+
+
+/* HP */
+
+.sheexcel-hp-orb {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 0 16px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.sheexcel-hp-orb-border {
+  position: relative;
+    width: 100%;
+    height: 115%;
+    background: url('/modules/sheexcel_updated/assets/ui/poe-orb-border.png') center no-repeat;
+    background-size: cover;
+    z-index: 4;
+    background-position-y: -8px;
+}
+
+.sheexcel-hp-orb-fill {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 60% 40%, #ff5555 70%, #a80000 100%),
+    repeating-radial-gradient(circle at 60% 60%, #ff8888 0 2px, transparent 2px 8px);
+  box-shadow: 0 0 24px #a8000088, 0 0 64px #ff555544 inset;
+  z-index: 1;
+  overflow: hidden;
+  animation: hp-orb-pulse 2.5s infinite;
+}
+
+.sheexcel-hp-orb-glass {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background:
+    linear-gradient(120deg, #fff4 20%, #fff0 70%),
+    radial-gradient(circle at 30% 30%, #fff6 30%, #fff0 80%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes hp-orb-pulse {
+  0%, 100% { box-shadow: 0 0 32px 8px #a8000055, 0 0 0 6px #bfa05a44; }
+  50% { box-shadow: 0 0 48px 16px #ff555577, 0 0 0 10px #ffd70044; }
+}
+
+.sheexcel-hp-orb-label {
+  font-family: 'Georgia', 'Garamond', serif;
+  color: #ffd700;
+  font-size: 1.2em;
+  text-shadow: 0 0 8px #a80000, 0 0 2px #000, 0 0 12px #ffd700;
+  letter-spacing: 1px;
+}
+
+/* HP Bubbles */
+.sheexcel-hp-orb-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 60% 40%, #fff8 60%, #ffbaba44 100%);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
+  animation-timing-function: linear;
+}
+
+/* 9 bubbles, each with unique position, size, duration, and delay */
+.bubble1 { width: 18px; height: 18px; left: 25px; bottom: 18px; animation: hp-orb-bubble1 3.5s infinite; }
+.bubble2 { width: 10px; height: 10px; left: 60px; bottom: 10px; animation: hp-orb-bubble2 2.8s infinite 1.2s; }
+.bubble3 { width: 14px; height: 14px; left: 40px; bottom: 30px; animation: hp-orb-bubble3 4.2s infinite 0.7s; }
+.bubble4 { width: 12px; height: 12px; left: 70px; bottom: 22px; animation: hp-orb-bubble4 3.1s infinite 0.9s; }
+.bubble5 { width: 16px; height: 16px; left: 15px; bottom: 8px; animation: hp-orb-bubble5 3.8s infinite 1.5s; }
+.bubble6 { width: 9px; height: 9px; left: 80px; bottom: 15px; animation: hp-orb-bubble6 2.5s infinite 0.3s; }
+.bubble7 { width: 13px; height: 13px; left: 55px; bottom: 35px; animation: hp-orb-bubble7 4.0s infinite 2.1s; }
+.bubble8 { width: 11px; height: 11px; left: 35px; bottom: 12px; animation: hp-orb-bubble8 3.2s infinite 1.8s; }
+.bubble9 { width: 15px; height: 15px; left: 65px; bottom: 25px; animation: hp-orb-bubble9 3.6s infinite 0.5s; }
+
+/* Animations for each bubble */
+@keyframes hp-orb-bubble1 {
+  0% { transform: translateY(0) scale(1); opacity: 0.7; }
+  70% { opacity: 1; }
+  100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+}
+@keyframes hp-orb-bubble2 {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  80% { opacity: 1; }
+  100% { transform: translateY(-30px) scale(1.1); opacity: 0; }
+}
+@keyframes hp-orb-bubble3 {
+  0% { transform: translateY(0) scale(1); opacity: 0.5; }
+  60% { opacity: 1; }
+  100% { transform: translateY(-50px) scale(1.3); opacity: 0; }
+}
+@keyframes hp-orb-bubble4 {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  75% { opacity: 1; }
+  100% { transform: translateY(-35px) scale(1.15); opacity: 0; }
+}
+@keyframes hp-orb-bubble5 {
+  0% { transform: translateY(0) scale(1); opacity: 0.7; }
+  65% { opacity: 1; }
+  100% { transform: translateY(-45px) scale(1.25); opacity: 0; }
+}
+@keyframes hp-orb-bubble6 {
+  0% { transform: translateY(0) scale(1); opacity: 0.5; }
+  60% { opacity: 1; }
+  100% { transform: translateY(-28px) scale(1.05); opacity: 0; }
+}
+@keyframes hp-orb-bubble7 {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  80% { opacity: 1; }
+  100% { transform: translateY(-38px) scale(1.18); opacity: 0; }
+}
+@keyframes hp-orb-bubble8 {
+  0% { transform: translateY(0) scale(1); opacity: 0.5; }
+  70% { opacity: 1; }
+  100% { transform: translateY(-32px) scale(1.12); opacity: 0; }
+}
+@keyframes hp-orb-bubble9 {
+  0% { transform: translateY(0) scale(1); opacity: 0.7; }
+  75% { opacity: 1; }
+  100% { transform: translateY(-42px) scale(1.22); opacity: 0; }
 }
