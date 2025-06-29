@@ -61,8 +61,8 @@
     width: 150px;
     height: 150px;
     border-radius: 50%;
-	object-fit: none;
-	object-position: center center;
+	object-fit: cover;
+    object-position: top;
     border: none;
     box-shadow: 0 2px 8px rgba(191, 160, 90, 0.15);
     display: block;
