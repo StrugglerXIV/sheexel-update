@@ -48,6 +48,9 @@ export function attachSheexcelListeners(sheet, html) {
             moveCheckToRoot(sheet, payload.checkId);
         });
 
+        html.find('.sheexcel-subchecks').hide();
+        html.find('.sheexcel-collapse-toggle').text('[+]');
+
     html.find('.sheexcel-collapse-toggle').click(ev => {
         const entry = $(ev.currentTarget).closest('.sheexcel-check-entry');
         entry.find('.sheexcel-subchecks').toggle();
