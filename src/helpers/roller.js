@@ -21,7 +21,7 @@ export async function handleRoll(event, sheet) {
 
   // Use the button text as the keyword for the roll
   let keyword = "";
-  const $currentEntry = btn.closest(".sheexcel-check-entry");
+  const $currentEntry = btn.closest(".sheexcel-check-entry-sub, .sheexcel-check-entry");
   if ($currentEntry.length) {
     // For checks/subchecks
     keyword = $currentEntry.find(".sheexcel-check-keyword").first().text().trim();

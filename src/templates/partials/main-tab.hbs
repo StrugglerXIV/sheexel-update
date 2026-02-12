@@ -11,117 +11,110 @@
     <!-- ▷ Subtab Navigation -->
     <nav class="sheexcel-main-subtab-nav tabs" data-group="secondary">
       <a class="item active" data-tab="checks">Checks</a>
-      <a class="item"       data-tab="saves">Saves</a>
-      <a class="item"       data-tab="attacks">Attacks</a>
-      <a class="item"       data-tab="spells">Spells</a>
+      <a class="item" data-tab="saves">Saves</a>
+      <a class="item" data-tab="attacks">Attacks</a>
+      <a class="item" data-tab="spells">Spells</a>
     </nav>
-	
+
     <!-- ▷ Search Bar -->
-	<input class="sheexcel-search" placeholder="Name of skill"></input>
+    <input class="sheexcel-search" placeholder="Name of skill"></input>
 
     <!-- ▷ Checks Pane -->
-<div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
-  <div class="sheexcel-check-dropzone"></div>
-  {{#each groupedReferences.checks}}
-    <div class="sheexcel-check-entry" 
-         draggable="true" 
-         data-check-id="{{this.id}}" 
-         data-has-children="{{#if this.subchecks}}true{{else}}false{{/if}}">
-      {{#if this.subchecks}}
+    <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:flex;">
+      <div class="sheexcel-check-dropzone"></div>
+      {{#each groupedReferences.checks}}
+      <div class="sheexcel-check-entry" draggable="true" data-check-id="{{this.id}}"
+        data-has-children="{{#if this.subchecks}}true{{else}}false{{/if}}">
+        {{#if this.subchecks}}
         <button type="button" class="sheexcel-collapse-toggle" data-check-id="{{this.id}}">[–]</button>
-      {{/if}}
-      <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
-        <span class="sheexcel-check-keyword">{{this.keyword}}</span>
-      </button>
-      <span class="sheexcel-check-value"> {{this.value}}</span>
-      {{#if this.subchecks}}
+        {{/if}}
+        <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
+          <span class="sheexcel-check-keyword">{{this.keyword}}</span>
+        </button>
+        <span class="sheexcel-check-value"> {{this.value}}</span>
+        {{#if this.subchecks}}
         <div class="sheexcel-subchecks">
           {{#each this.subchecks}}
-            <div class="sheexcel-check-entry" draggable="true" data-check-id="{{this.id}}">
-              <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
-                <span class="sheexcel-check-keyword">{{this.keyword}}</span>
-              </button>
-              <span class="sheexcel-check-value"> {{this.value}}</span>
-            </div>
+          <div class="sheexcel-check-entry-sub" draggable="true" data-check-id="{{this.id}}">
+            <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
+              <span class="sheexcel-check-keyword">{{this.keyword}}</span>
+            </button>
+            <span class="sheexcel-check-value"> {{this.value}}</span>
+          </div>
           {{/each}}
         </div>
-      {{/if}}
-    </div>
-  {{/each}}
-  {{#unless groupedReferences.checks.length}}
-    <i>No checks defined</i>
-  {{/unless}}
-</div>
-
-	
-    <!-- ▷ Saves Pane -->
-    <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
-      {{#each groupedReferences.saves}}
-        <div>
-          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
-            {{this.keyword}}
-          </button> → {{this.value}}
-        </div>
+        {{/if}}
+      </div>
       {{/each}}
-      {{#unless groupedReferences.saves.length}}
-        <i>No saves defined</i>
+      {{#unless groupedReferences.checks.length}}
+      <i>No checks defined</i>
       {{/unless}}
     </div>
 
-  <!-- ▷ Attacks Pane -->
-<div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
-  {{#each groupedReferences.attacks}}
-  <select class="sheexcel-damage-mode" data-index="{{@index}}">
-  <option value="normal">Normal</option>
-  <option value="advantage">Advantage</option>
-  <option value="disadvantage">Disadvantage</option>
-</select>
-    <div class="attack-entry">
-      <!-- 1) Show the fetched attack name -->
-      <strong class="attack-name">{{this.attackName}}</strong><br>
 
-      <!-- 2) Roll button carries mod, crit threshold, and damage formula -->
-      <button
-        type="button"
-        class="sheexcel-roll"
-        data-value="{{this.value}}"
-        data-crit="{{this.critRange}}"
-        data-damage="{{this.damage}}"
-      >
-        {{this.keyword}}
-      </button>
-       → {{this.value}}<br>
-
-      <!-- 3) Display static damage & crit info -->
-      <small>
-        Damage: <code>{{this.damage}}</code>
-        | Crit on ≥ <code>{{this.critRange}}</code>
-      </small>
+    <!-- ▷ Saves Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
+      {{#each groupedReferences.saves}}
+      <div class="save-button-margin">
+        <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+          {{this.keyword}}
+        </button> → {{this.value}}
+      </div>
+      {{/each}}
+      {{#unless groupedReferences.saves.length}}
+      <i>No saves defined</i>
+      {{/unless}}
     </div>
-  {{/each}}
 
-  {{#unless groupedReferences.attacks.length}}
-    <i>No attacks defined</i>
-  {{/unless}}
-</div>
+    <!-- ▷ Attacks Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
+      {{#each groupedReferences.attacks}}
+      <div class="attack-entry">
+        <select class="sheexcel-damage-mode" data-index="{{@index}}">
+          <option value="normal">Normal</option>
+          <option value="advantage">Advantage</option>
+          <option value="disadvantage">Disadvantage</option>
+        </select>
+        <!-- 1) Show the fetched attack name -->
+        <strong class="attack-name">{{this.attackName}}</strong><br>
+
+        <!-- 2) Roll button carries mod, crit threshold, and damage formula -->
+        <button type="button" class="sheexcel-roll" data-value="{{this.value}}" data-crit="{{this.critRange}}"
+          data-damage="{{this.damage}}">
+          {{this.keyword}}
+        </button>
+        → {{this.value}}<br>
+
+        <!-- 3) Display static damage & crit info -->
+        <small>
+          Damage: <code>{{this.damage}}</code>
+           | Crit on ≥ <code>{{this.critRange}}</code>
+        </small>
+      </div>
+      {{/each}}
+
+      {{#unless groupedReferences.attacks.length}}
+      <i>No attacks defined</i>
+      {{/unless}}
+    </div>
 
 
     <!-- ▷ Spells Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="spells" style="display:none;">
       {{#each groupedReferences.spells}}
-        <div>
-          <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
-            {{this.keyword}}
-          </button> → {{this.value}}
-        </div>
+      <div>
+        <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+          {{this.keyword}}
+        </button> → {{this.value}}
+      </div>
       {{/each}}
       {{#unless groupedReferences.spells.length}}
-        <i>No spells defined</i>
+      <i>No spells defined</i>
       {{/unless}}
     </div>
 
   </div>
-    <div class="sheexcel-references-controls">
+  <div class="sheexcel-references-controls">
     <button type="button" class="sheexcel-reference-save-button">Update Values</button>
   </div>
 </div>

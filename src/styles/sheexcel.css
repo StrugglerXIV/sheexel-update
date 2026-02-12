@@ -172,7 +172,20 @@
     border-radius: 12px;
     box-shadow: 0 2px 12px #0008;
     color: #c7a86d;
-    padding: 1rem;
+    padding: 10px;
+    margin-bottom: 1rem;
+    min-height: 120px;
+    height: auto;
+    overflow-y: auto;
+}
+
+.sheexcel-main-subtab-content[data-tab="attacks"] {
+    background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    border: 1.5px solid #bfa05a;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px #0008;
+    color: white;
+    padding: 10px;
     margin-bottom: 1rem;
     min-height: 120px;
     height: auto;
@@ -191,19 +204,22 @@
 /* --- Roll Buttons --- */
 .sheexcel-roll {
     height: 50px;
-    max-height: 50px;
-    min-height: 50px;
     background: linear-gradient(90deg, #bfa05a 60%, #c7a86d 100%);
-    color: #1a140f;
+    color: white;
     border: none;
     border-radius: 6px;
-    padding: 0.4em 1.2em;
-    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    margin-right: 0.5em;
     transition: background 0.2s, box-shadow 0.2s;
     box-shadow: 0 1px 4px rgba(191, 160, 90, 0.08);
+}
+
+.save-button-margin {
+    display: flex;
+    margin-left: 5px;
+    margin-right: 5px;
+    flex-direction: column;
+    align-items: center;
 }
 
 .sheexcel-roll:hover {
@@ -213,6 +229,9 @@
 
 /* --- Attack Entry --- */
 .attack-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background: #241a13;
     border: 1px solid #bfa05a;
     border-radius: 6px;
@@ -246,9 +265,13 @@
 /* --- References Tab --- */
 .sheexcel-references {
     margin-bottom: 1em;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .sheexcel-reference-row {
+    width: 15%;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5em;
@@ -460,15 +483,34 @@
 
 /* --- Checks Card Entry --- */
 .sheexcel-check-entry {
+    width: 30%;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 1em;
     background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
     border: 2px solid #bfa05a;
     border-radius: 10px;
     margin-bottom: 0.7em;
-    padding: 0.7em 1.2em;
+    box-shadow: 0 1px 4px rgba(191, 160, 90, 0.04);
+    transition: box-shadow 0.2s, border 0.2s;
+    background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
+    border: 2px solid #bfa05a;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px #bfa05a22;
+    color: #c7a86d;
+    font-family: 'Georgia', 'Garamond', serif;
+}
+
+.sheexcel-check-entry-sub {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
+    border: 2px solid #bfa05a;
+    border-radius: 10px;
     box-shadow: 0 1px 4px rgba(191, 160, 90, 0.04);
     transition: box-shadow 0.2s, border 0.2s;
     background: linear-gradient(90deg, #1a140f 60%, #2d1a0f 100%);
@@ -480,8 +522,9 @@
 }
 
 .sheexcel-collapse-toggle {
-    height: 25px;
-    width: 25px;
+    color: white;
+    height: 30px;
+    width: 50px;
 }
 
 .sheexcel-check-entry:hover {
@@ -493,16 +536,13 @@
 .sheexcel-check-value {
     font-family: monospace;
     color: #1a140f;
-    font-size: 1.1em;
     font-weight: bold;
     margin-right: 0.5em;
     background: linear-gradient(120deg, #bfa05a 60%, #c7a86d 100%);
     color: #1a140f;
     border-radius: 50%;
-    border: 2px solid #c7a86d;
     box-shadow: 0 2px 8px #bfa05a88;
     padding: 0.2em 0.7em;
-    font-size: 1.2em;
     font-weight: bold;
     margin-right: 0.7em;
     display: flex;
@@ -512,12 +552,8 @@
 
 /* --- Checks Keyword: more readable --- */
 .sheexcel-check-keyword {
-    width: 200px;
-    color: #000000;
+    color: white;
     font-weight: 700;
-    font-size: 1.1em;
-    margin-left: 0.5em;
-    text-shadow: 0 1px 0 #1a140f;
 }
 
 /* --- Flex Layout for Sheet and Tabs --- */
@@ -591,10 +627,10 @@
 
 /* Cover the entire button with the background image */
 .sheexcel-main-subtab-content[data-tab="checks"] .sheexcel-roll {
+    width: 100%;
     position: relative;
     overflow: hidden;
-    height: 56px;
-    min-width: 220px;
+    height: 20px !important;
     max-width: 100%;
     border: 2.5px solid #bfa05a;
     border-radius: 12px;
@@ -607,7 +643,7 @@
         0 2px 12px #000a;
     color: #fffbe6;
     font-family: 'Georgia', 'Garamond', serif;
-    font-size: 1.25rem;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 1.5px;
     text-shadow:
@@ -619,7 +655,6 @@
         border-color 0.2s,
         background 0.2s,
         color 0.2s;
-    padding: 0 2.5em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -728,6 +763,11 @@
 
 /* --- Scrollbar styling for PoE look --- */
 .sheexcel-main-subtab-content {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
     scrollbar-width: thin;
     scrollbar-color: #bfa05a #1a140f;
 }
@@ -765,9 +805,9 @@
     background-repeat: no-repeat;
     background-position: top;
     display: flex;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: space-between !important;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    flex-direction: row;
 }
 
 
