@@ -1,75 +1,37 @@
 <div class="sheexcel-sidebar-tab tab references" data-tab="references">
-  <h3>References</h3>
-  <button type="button" class="sheexcel-import-json">Import JSON…</button>
-  <button type="button" class="sheexcel-export-json">Export JSON…</button>
-  <input type="file" id="sheexcel-json-file" accept="application/json" style="display:none;">
-
-  <div class="sheexcel-references">
-    {{#each adjustedReferences}}
-      <div class="sheexcel-reference-row" data-index="{{this.index}}">
-        <!-- Cell, Keyword, Sheet, Type -->
-        <input type="text"
-               class="sheexcel-reference-input"
-               data-type="cell"
-               data-index="{{this.index}}"
-               value="{{this.cell}}"
-               placeholder="Bonus">
-        <input type="text"
-               class="sheexcel-reference-input"
-               data-type="keyword"
-               data-index="{{this.index}}"
-               value="{{this.keyword}}"
-               placeholder="Keyword">
-        <select class="sheexcel-reference-input"
-                data-type="sheet"
-                data-index="{{this.index}}">
-          {{#each this.sheetNames}}
-            <option value="{{this}}" {{#if (eq this ../sheet)}}selected{{/if}}>{{this}}</option>
-          {{/each}}
-        </select>
-        <select class="sheexcel-reference-input"
-                data-type="refType"
-                data-index="{{this.index}}">
-          <option value="checks"  {{#if (eq this.type "checks")}}selected{{/if}}>Checks</option>
-          <option value="saves"   {{#if (eq this.type "saves")}}selected{{/if}}>Saves</option>
-          <option value="attacks" {{#if (eq this.type "attacks")}}selected{{/if}}>Attacks</option>
-          <option value="spells"  {{#if (eq this.type "spells")}}selected{{/if}}>Spells</option>
-        </select>
-
-        {{!-- Additional inputs for attacks --}}
-        {{#if (eq this.type "attacks")}}
-          <input type="text"
-                 class="sheexcel-reference-input"
-                 data-type="attackNameCell"
-                 data-index="{{this.index}}"
-                 value="{{this.attackNameCell}}"
-                 placeholder="Name Cell">
-          <input type="text"
-                 class="sheexcel-reference-input"
-                 data-type="critRangeCell"
-                 data-index="{{this.index}}"
-                 value="{{this.critRangeCell}}"
-                 placeholder="Crit Range Cell">
-          <input type="text"
-                 class="sheexcel-reference-input"
-                 data-type="damageCell"
-                 data-index="{{this.index}}"
-                 value="{{this.damageCell}}"
-                 placeholder="Damage Cell">
-        {{/if}}
-
-        <div class="sheexcel-reference-remove">
-          <button type="button"
-                  class="sheexcel-reference-remove-button"
-                  data-index="{{this.index}}">Remove</button>
-          <span class="sheexcel-reference-value">{{this.value}}</span>
-        </div>
-      </div>
-    {{/each}}
+  <div class="sheexcel-tab-header">
+    <h3>🧰 Configuration</h3>
+    <div class="sheexcel-tab-actions">
+      <button type="button" class="sheexcel-update-all-button">Update All</button>
+      <button type="button" class="sheexcel-clear-checks-button sheexcel-secondary-btn" title="Delete all check references">
+        🗑 Clear Checks
+      </button>
+      <button type="button" class="sheexcel-clear-saves-button sheexcel-secondary-btn" title="Delete all save references">
+        🗑 Clear Saves
+      </button>
+      <button type="button" class="sheexcel-clear-attacks-button sheexcel-secondary-btn" title="Delete all attack references">
+        🗑 Clear Attacks
+      </button>
+      <button type="button" class="sheexcel-clear-spells-button sheexcel-secondary-btn" title="Delete all spell references">
+        🗑 Clear Spells
+      </button>
+      <button type="button" class="sheexcel-clear-gears-button sheexcel-secondary-btn" title="Delete all gear references">
+        🗑 Clear Gears
+      </button>
+      <button type="button" class="sheexcel-import-json" title="Import references from JSON file">
+        📁 Import
+      </button>
+      <button type="button" class="sheexcel-export-json" title="Export references to JSON file">
+        💾 Export
+      </button>
+    </div>
   </div>
 
-  <div class="sheexcel-references-controls">
-    <button type="button" class="sheexcel-reference-save-button">Save References</button>
-    <button type="button" class="sheexcel-reference-add-button">Add Reference</button>
+  <input type="file" id="sheexcel-json-file" accept="application/json" style="display:none;">
+
+  <div class="sheexcel-empty-state">
+    <div class="sheexcel-empty-icon">🧹</div>
+    <h4>Reference Configuration</h4>
+    <p>Use the buttons above to clear, import, or export references.</p>
   </div>
 </div>

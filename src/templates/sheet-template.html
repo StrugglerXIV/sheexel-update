@@ -1,37 +1,90 @@
 <form class="{{cssClass}} sheexcel-sheet" autocomplete="off">
   <header class="sheexcel-sheet-header">
     <div class="sheexcel-profile-pic-wrapper">
-      <img class="sheexcel-profile-pic" src="{{actor.img}}" alt="{{actor.name}}" data-edit="img"
+      <img class="sheexcel-profile-pic" src="{{actor.img}}" alt="{{actor.name}}"
         style="cursor:pointer;" />
     </div>
     <div class="sheexcel-sheet-header-content">
-      <input name="name" type="text" value="{{actor.name}}" class="sheexcel-actor-name" />
+      <div class="sheexcel-actor-name-wrap">
+        <span class="sheexcel-actor-name-label" title="Click to edit">{{actor.name}}</span>
+        <input name="name" type="text" value="{{actor.name}}" class="sheexcel-actor-name sheexcel-actor-name-input" />
+      </div>
     </div>
-    <div class="sheexcel-hp-orb">
-      <div class="sheexcel-hp-orb-fill"></div>
-      <div class="sheexcel-hp-orb-bubble bubble1"></div>
-      <div class="sheexcel-hp-orb-bubble bubble2"></div>
-      <div class="sheexcel-hp-orb-bubble bubble3"></div>
-      <div class="sheexcel-hp-orb-bubble bubble4"></div>
-      <div class="sheexcel-hp-orb-bubble bubble5"></div>
-      <div class="sheexcel-hp-orb-bubble bubble6"></div>
-      <div class="sheexcel-hp-orb-bubble bubble7"></div>
-      <div class="sheexcel-hp-orb-bubble bubble8"></div>
-      <div class="sheexcel-hp-orb-bubble bubble9"></div>
-      <div class="sheexcel-hp-orb-glass"></div>
-      <span class="sheexcel-hp-orb-label"></span>
-      <div class="sheexcel-hp-orb-border"></div>
+    <div class="sheexcel-orb-stack">
+      <div class="sheexcel-hp-orb">
+        <div class="sheexcel-hp-orb-fill"></div>
+        <div class="sheexcel-hp-orb-bubble bubble1"></div>
+        <div class="sheexcel-hp-orb-bubble bubble2"></div>
+        <div class="sheexcel-hp-orb-bubble bubble3"></div>
+        <div class="sheexcel-hp-orb-bubble bubble4"></div>
+        <div class="sheexcel-hp-orb-bubble bubble5"></div>
+        <div class="sheexcel-hp-orb-bubble bubble6"></div>
+        <div class="sheexcel-hp-orb-bubble bubble7"></div>
+        <div class="sheexcel-hp-orb-bubble bubble8"></div>
+        <div class="sheexcel-hp-orb-bubble bubble9"></div>
+        <div class="sheexcel-hp-orb-glass"></div>
+        <span class="sheexcel-hp-orb-label"></span>
+        <div class="sheexcel-hp-orb-border"></div>
+      </div>
+      <div class="sheexcel-vitality-orb">
+        <div class="sheexcel-vitality-orb-fill"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble1"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble2"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble3"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble4"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble5"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble6"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble7"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble8"></div>
+        <div class="sheexcel-vitality-orb-bubble bubble9"></div>
+        <div class="sheexcel-vitality-orb-glass"></div>
+        <span class="sheexcel-vitality-orb-label"></span>
+        <div class="sheexcel-vitality-orb-border"></div>
+      </div>
     </div>
   </header>
   <section class="sheexcel-sheet-body sheexcel-sheet-flex">
+    <div class="sheexcel-top-panels">
+      <div class="sheexcel-armor-block">
+      <div class="sheexcel-armor-header">
+        <div class="sheexcel-armor-title">Armor</div>
+        <button type="button" class="sheexcel-armor-refresh" title="Refresh Armor">↻</button>
+      </div>
+      <div class="sheexcel-armor-grid">
+        <div class="sheexcel-armor-col sheexcel-armor-col-physical">
+          <div class="sheexcel-armor-row" data-armor-label="Blunt"><span class="sheexcel-armor-label">Blunt</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Slash"><span class="sheexcel-armor-label">Slash</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Pierce"><span class="sheexcel-armor-label">Pierce</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Acid"><span class="sheexcel-armor-label">Acid</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Fire"><span class="sheexcel-armor-label">Fire</span><span class="sheexcel-armor-value">-</span></div>
+        </div>
+        <div class="sheexcel-armor-col sheexcel-armor-col-mystic">
+          <div class="sheexcel-armor-row" data-armor-label="Cold"><span class="sheexcel-armor-label">Cold</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Lightning"><span class="sheexcel-armor-label">Lightning</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Necrotic"><span class="sheexcel-armor-label">Necrotic</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Arcane"><span class="sheexcel-armor-label">Arcane</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Psychic"><span class="sheexcel-armor-label">Psychic</span><span class="sheexcel-armor-value">-</span></div>
+          <div class="sheexcel-armor-row" data-armor-label="Radiant"><span class="sheexcel-armor-label">Radiant</span><span class="sheexcel-armor-value">-</span></div>
+        </div>
+      </div>
+      </div>
+      <div class="sheexcel-stats-block">
+      <div class="sheexcel-stats-header">
+        <div class="sheexcel-stats-title">Stats</div>
+        <button type="button" class="sheexcel-stats-refresh" title="Refresh Stats">↻</button>
+      </div>
+      <div class="sheexcel-stats-grid">
+      </div>
+      </div>
+    </div>
     <div class="sheexcel-main-content">
       <!-- Primary Tabs -->
       <nav class="sheexcel-sheet-tabs tabs" data-group="primary">
         <a class="sheexcel-sheet-toggle" title="Toggle Sidebar">
-          <i class="fas fa-bars"></i>
+          <span aria-hidden="true">☰</span>
         </a>
         <a class="item active sheexcel-sheet-main" data-tab="main">Main</a>
-        <a class="item sheexcel-sheet-references" data-tab="references">References</a>
+        <a class="item sheexcel-sheet-references" data-tab="references">Configuration</a>
         <a class="item sheexcel-sheet-settings" data-tab="settings"></a>
       </nav>
 

@@ -5,9 +5,13 @@
   "authors": [
     { "name": "Struggler", "discord": "StrugglerXIV" }
   ],
-  "version": "0.0.33",
+  "version": "0.0.35",
   "compatibility": { "minimum": "11", "verified": "12", "maximum": "12" },
   "esmodules": [
+    "helpers/constants.js",
+    "helpers/validation.js",
+    "helpers/apiCache.js",
+    "helpers/loadingManager.js",
     "helpers/dragDrop.js",
     "libs/FileSaver.js",
     "helpers/prepareData.js",

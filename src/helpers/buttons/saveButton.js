@@ -12,11 +12,28 @@ import { findExistingByIdOrKeyword, randomID } from "../idGenerator.js";
 export async function onSaveReferences(sheet, event) {
   event.preventDefault();
 
-  const rows = sheet.element.find(".sheexcel-reference-row").toArray();
   const existingRefs = sheet.actor.getFlag("sheexcel_updated", "cellReferences") || [];
+  const preservedSpells = existingRefs.filter(ref => ref?.type === "spells");
+  
+  // Check if we're on the references tab or main tab
+  const referencesTabActive = sheet.element.find('.sheexcel-sidebar-tab.references').hasClass('active');
+  const rows = referencesTabActive ? sheet.element.find(".sheexcel-reference-card").toArray() : [];
 
-  console.log("Saving references. Existing refs:", JSON.parse(JSON.stringify(existingRefs)));
-  console.log("Found reference rows in UI:", rows.length);
+  // If called from main tab or no UI rows, just refresh existing references
+  if (!referencesTabActive || rows.length === 0) {
+    const sheetId = sheet.actor.getFlag("sheexcel_updated", "sheetId");
+    
+    if (sheetId) {
+      const updated = await batchFetchValues(sheetId, existingRefs);
+      await sheet.actor.setFlag("sheexcel_updated", "cellReferences", updated);
+      ui.notifications.info(`Updated ${updated.length} reference values`);
+    } else {
+      ui.notifications.warn("No Google Sheet ID configured");
+    }
+    
+    sheet.render(false);
+    return;
+  }
 
   const refs = rows.map((el, idx) => {
     const $r = $(el);
@@ -73,21 +90,21 @@ export async function onSaveReferences(sheet, event) {
     return refObj;
   });
 
-  console.log("Final refs to save:", JSON.parse(JSON.stringify(refs)));
+  const nonSpellRefs = refs.filter(ref => ref?.type !== "spells");
 
   const sheetId = sheet.actor.getFlag("sheexcel_updated", "sheetId");
 
   if (sheetId) {
-    const updated = await batchFetchValues(sheetId, refs);
-    console.log("Batch fetched values:", updated);
-    await sheet.actor.setFlag("sheexcel_updated", "cellReferences", updated);
+    const updated = await batchFetchValues(sheetId, nonSpellRefs);
+    const merged = [...updated, ...preservedSpells];
+    await sheet.actor.setFlag("sheexcel_updated", "cellReferences", merged);
     updated.forEach((ref, idx) => {
       sheet.element
-        .find(`.sheexcel-reference-row[data-index="${idx}"] .sheexcel-reference-value`)
+        .find(`.sheexcel-reference-card[data-index="${idx}"] .sheexcel-reference-value`)
         .text(ref.value);
     });
   } else {
-    await sheet.actor.setFlag("sheexcel_updated", "cellReferences", refs);
+    await sheet.actor.setFlag("sheexcel_updated", "cellReferences", [...nonSpellRefs, ...preservedSpells]);
   }
 
   sheet.render(false);

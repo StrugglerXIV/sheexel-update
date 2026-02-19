@@ -1,33 +1,71 @@
+import { apiCache } from './apiCache.js';
+import { sanitizeSheetName, validateCellReference, ValidationError } from './validation.js';
+import { ERROR_MESSAGES, REFERENCE_TYPES } from './constants.js';
+
 export async function batchFetchValues(sheetId, refs) {
-  const apiKey = game.settings.get("sheexcel_updated", "googleApiKey");
+  if (!sheetId || !Array.isArray(refs)) {
+    throw new ValidationError("Invalid parameters for batch fetch");
+  }
 
   // Helper to recursively collect all queries with a path
   function collectQueries(refs, path = []) {
     let queries = [];
     refs.forEach((r, idx) => {
-      const sheetName = r.sheet.match(/[^A-Za-z0-9_]/)
-        ? `'${r.sheet.replace(/'/g, "''")}'`
-        : r.sheet;
+      try {
+        const sheetName = sanitizeSheetName(r.sheet);
 
-      // Main value
-      if (r.cell) {
-        queries.push({ path: [...path, idx], field: "value", range: `${sheetName}!${r.cell}` });
-      }
-      // Attack-specific fields
-      if (r.type === "attacks") {
-        if (r.attackNameCell) {
-          queries.push({ path: [...path, idx], field: "attackName", range: `${sheetName}!${r.attackNameCell}` });
+        // Main value
+        if (r.cell) {
+          const validCell = validateCellReference(r.cell);
+          queries.push({ path: [...path, idx], field: "value", range: `${sheetName}!${validCell}` });
         }
-        if (r.critRangeCell) {
-          queries.push({ path: [...path, idx], field: "critRange", range: `${sheetName}!${r.critRangeCell}` });
+        
+        // Attack-specific fields
+        if (r.type === REFERENCE_TYPES.ATTACKS) {
+          if (r.attackNameCell) {
+            const validCell = validateCellReference(r.attackNameCell);
+            queries.push({ path: [...path, idx], field: "attackName", range: `${sheetName}!${validCell}` });
+          }
+          if (r.critRangeCell) {
+            const validCell = validateCellReference(r.critRangeCell);
+            queries.push({ path: [...path, idx], field: "critRange", range: `${sheetName}!${validCell}` });
+          }
+          if (r.damageCell) {
+            const validCell = validateCellReference(r.damageCell);
+            queries.push({ path: [...path, idx], field: "damage", range: `${sheetName}!${validCell}` });
+          }
         }
-        if (r.damageCell) {
-          queries.push({ path: [...path, idx], field: "damage", range: `${sheetName}!${r.damageCell}` });
+
+        if (r.type === REFERENCE_TYPES.SPELLS) {
+          const spellFields = [
+            ["spellNameCell", "spellName"],
+            ["circleCell", "circle"],
+            ["spellTypeCell", "spellType"],
+            ["componentsCell", "components"],
+            ["castTimeCell", "castTime"],
+            ["costCell", "cost"],
+            ["rangeCell", "range"],
+            ["durationCell", "duration"],
+            ["descriptionCell", "description"],
+            ["effectCell", "effect"],
+            ["empowerCell", "empower"],
+            ["sourceCell", "source"],
+            ["disciplineCell", "discipline"]
+          ];
+          spellFields.forEach(([cellField, valueField]) => {
+            if (!r[cellField]) return;
+            const validCell = validateCellReference(r[cellField]);
+            queries.push({ path: [...path, idx], field: valueField, range: `${sheetName}!${validCell}` });
+          });
         }
-      }
-      // Recurse into subchecks
-      if (Array.isArray(r.subchecks) && r.subchecks.length) {
-        queries = queries.concat(collectQueries(r.subchecks, [...path, idx, "subchecks"]));
+        
+        // Recurse into subchecks
+        if (Array.isArray(r.subchecks) && r.subchecks.length) {
+          queries = queries.concat(collectQueries(r.subchecks, [...path, idx, "subchecks"]));
+        }
+      } catch (error) {
+        console.warn(`❌ Sheexcel | Invalid reference at index ${idx}:`, error.message);
+        // Skip invalid references but continue processing others
       }
     });
     return queries;
@@ -39,28 +77,52 @@ export async function batchFetchValues(sheetId, refs) {
     for (let i = 0; i < path.length - 1; i++) {
       ref = ref[path[i]];
     }
-    ref[path[path.length - 1]][field] = value;
+    ref[path[path.length - 1]][field] = value || "";
   }
 
   // Collect all queries
   const queries = collectQueries(refs);
 
-  if (!queries.length) return refs;
+  if (!queries.length) {
+    console.warn("❌ Sheexcel | No valid cell references found");
+    return refs;
+  }
 
-  // Build the batchGet URL for all ranges
-  const rangesParam = queries.map(q => `ranges=${encodeURIComponent(q.range)}`).join("&");
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?key=${apiKey}&${rangesParam}`;
+  try {
+    // Use cached API with automatic retry and fallback
+    const ranges = queries.map(q => q.range);
+    const json = await apiCache.batchGet(sheetId, ranges);
 
-  // Fetch all requested cell values in a single API call
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Google Sheets API error: ${res.status} ${res.statusText}`);
-  const json = await res.json();
+    // Assign the fetched values back to the correct fields in each ref/subcheck
+    const extractValue = (vr) => {
+      const values = Array.isArray(vr.values) ? vr.values : [];
+      if (!values.length) return "";
+      if (values.length === 1 && values[0].length === 1) return values[0][0] ?? "";
+      const lines = values.map(row => row.filter(v => String(v ?? "").trim() !== "").join(" "))
+        .filter(line => line.trim() !== "");
+      return lines.join("\n");
+    };
 
-  // Assign the fetched values back to the correct fields in each ref/subcheck
-  json.valueRanges.forEach((vr, i) => {
-    const { path, field } = queries[i];
-    assignByPath(refs, path, field, vr.values?.[0]?.[0] ?? "");
-  });
+    if (json.valueRanges) {
+      json.valueRanges.forEach((vr, i) => {
+        const { path, field } = queries[i];
+        let value = extractValue(vr);
+        if (field === "components") {
+          value = value.split("\n").filter(Boolean).join(", ");
+        }
+        assignByPath(refs, path, field, value);
+      });
+    }
 
-  return refs;
+    return refs;
+  } catch (error) {
+    console.error("❌ Sheexcel | Batch fetch failed:", error);
+    
+    // Set all values to empty string on failure
+    queries.forEach(({ path, field }) => {
+      assignByPath(refs, path, field, "");
+    });
+    
+    throw new Error(`${ERROR_MESSAGES.API_ERROR}: ${error.message}`);
+  }
 }

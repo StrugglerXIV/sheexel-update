@@ -2,10 +2,30 @@
   <div class="sheexcel-main-subtabs">
 
     <!-- ▷ Roll Mode Selector -->
-    <div class="sheexcel-roll-mode">
-      <label><input type="radio" name="roll-mode" value="adv"> Advantage</label>
-      <label><input type="radio" name="roll-mode" value="norm" checked> Normal</label>
-      <label><input type="radio" name="roll-mode" value="dis"> Disadvantage</label>
+    <div class="sheexcel-roll-mode-section">
+      <label class="sheexcel-section-label">
+        🎲 Roll Mode
+      </label>
+      <div class="sheexcel-roll-mode">
+        <label class="sheexcel-radio-option">
+          <input type="radio" name="roll-mode" value="adv">
+          <span class="sheexcel-radio-label">
+            ▲ Advantage
+          </span>
+        </label>
+        <label class="sheexcel-radio-option">
+          <input type="radio" name="roll-mode" value="norm" checked>
+          <span class="sheexcel-radio-label">
+            = Normal
+          </span>
+        </label>
+        <label class="sheexcel-radio-option">
+          <input type="radio" name="roll-mode" value="dis">
+          <span class="sheexcel-radio-label">
+            ▼ Disadvantage
+          </span>
+        </label>
+      </div>
     </div>
 
     <!-- ▷ Subtab Navigation -->
@@ -14,51 +34,83 @@
       <a class="item" data-tab="saves">Saves</a>
       <a class="item" data-tab="attacks">Attacks</a>
       <a class="item" data-tab="spells">Spells</a>
+      <a class="item" data-tab="gears">Gears</a>
     </nav>
 
     <!-- ▷ Search Bar -->
-    <input class="sheexcel-search" placeholder="Name of skill"></input>
+    <input class="sheexcel-search" placeholder="Search"></input>
 
     <!-- ▷ Checks Pane -->
-    <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:flex;">
-      <div class="sheexcel-check-dropzone"></div>
-      {{#each groupedReferences.checks}}
-      <div class="sheexcel-check-entry" draggable="true" data-check-id="{{this.id}}"
-        data-has-children="{{#if this.subchecks}}true{{else}}false{{/if}}">
-        {{#if this.subchecks}}
-        <button type="button" class="sheexcel-collapse-toggle" data-check-id="{{this.id}}">[–]</button>
-        {{/if}}
-        <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
-          <span class="sheexcel-check-keyword">{{this.keyword}}</span>
-        </button>
-        <span class="sheexcel-check-value"> {{this.value}}</span>
-        {{#if this.subchecks}}
-        <div class="sheexcel-subchecks">
-          {{#each this.subchecks}}
-          <div class="sheexcel-check-entry-sub" draggable="true" data-check-id="{{this.id}}">
-            <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
-              <span class="sheexcel-check-keyword">{{this.keyword}}</span>
-            </button>
-            <span class="sheexcel-check-value"> {{this.value}}</span>
+    <div class="sheexcel-main-subtab-content" data-tab="checks" style="display:block;">
+      <div class="sheexcel-checks-toolbar">
+        <button type="button" class="sheexcel-update-skills-button">Update Skills</button>
+      </div>
+      <div class="sheexcel-check-dropzone">
+        <div class="sheexcel-dropzone-content">
+          <span aria-hidden="true">🧩</span>
+          <span>Drop checks here to ungroup them</span>
+        </div>
+      </div>
+      
+      {{#if groupedReferences.checks.length}}
+        <div class="sheexcel-checks-grid">
+          {{#each groupedReferences.checks}}
+          <div class="sheexcel-check-entry {{#if this.subchecks}}has-children{{/if}}" draggable="true" data-check-id="{{this.id}}"
+            data-has-children="{{#if this.subchecks}}true{{else}}false{{/if}}">
+            
+            <div class="sheexcel-check-main">
+              {{#if this.subchecks}}
+                <button type="button" class="sheexcel-collapse-toggle" data-check-id="{{this.id}}" title="Toggle subchecks">
+                  <span class="sheexcel-collapse-icon">▶</span>
+                </button>
+              {{/if}}
+              
+              <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
+                <span class="sheexcel-check-keyword">{{this.keyword}}</span>
+                <span class="sheexcel-check-value">{{this.value}}</span>
+              </button>
+              {{#if this.comment}}
+              <div class="sheexcel-check-comment">{{this.comment}}</div>
+              {{/if}}
+            </div>
+            
+            {{#if this.subchecks}}
+            <div class="sheexcel-subchecks">
+              {{#each this.subchecks}}
+              <div class="sheexcel-check-entry-sub" draggable="true" data-check-id="{{this.id}}">
+                <button type="button" class="sheexcel-roll" data-value="{{this.value}}" title="Roll {{this.keyword}}">
+                  <span class="sheexcel-check-keyword">{{this.keyword}}</span>
+                  <span class="sheexcel-check-value">{{this.value}}</span>
+                </button>
+                {{#if this.comment}}
+                <div class="sheexcel-check-comment">{{this.comment}}</div>
+                {{/if}}
+              </div>
+              {{/each}}
+            </div>
+            {{/if}}
           </div>
           {{/each}}
         </div>
-        {{/if}}
-      </div>
-      {{/each}}
-      {{#unless groupedReferences.checks.length}}
-      <i>No checks defined</i>
-      {{/unless}}
+      {{else}}
+        <div class="sheexcel-empty-checks">
+          <i>No checks defined</i>
+        </div>
+      {{/if}}
     </div>
 
 
     <!-- ▷ Saves Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
+      <div class="sheexcel-saves-toolbar">
+        <button type="button" class="sheexcel-update-saves-button">Update Saves</button>
+      </div>
       {{#each groupedReferences.saves}}
       <div class="save-button-margin">
         <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
           {{this.keyword}}
-        </button> → {{this.value}}
+        </button>
+        <span class="sheexcel-save-value">{{this.value}}</span>
       </div>
       {{/each}}
       {{#unless groupedReferences.saves.length}}
@@ -68,30 +120,43 @@
 
     <!-- ▷ Attacks Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="attacks" style="display:none;">
-      {{#each groupedReferences.attacks}}
-      <div class="attack-entry">
-        <select class="sheexcel-damage-mode" data-index="{{@index}}">
-          <option value="normal">Normal</option>
-          <option value="advantage">Advantage</option>
-          <option value="disadvantage">Disadvantage</option>
-        </select>
-        <!-- 1) Show the fetched attack name -->
-        <strong class="attack-name">{{this.attackName}}</strong><br>
-
-        <!-- 2) Roll button carries mod, crit threshold, and damage formula -->
-        <button type="button" class="sheexcel-roll" data-value="{{this.value}}" data-crit="{{this.critRange}}"
-          data-damage="{{this.damage}}">
-          {{this.keyword}}
-        </button>
-        → {{this.value}}<br>
-
-        <!-- 3) Display static damage & crit info -->
-        <small>
-          Damage: <code>{{this.damage}}</code>
-           | Crit on ≥ <code>{{this.critRange}}</code>
-        </small>
+      <div class="sheexcel-attacks-toolbar">
+        <button type="button" class="sheexcel-update-attacks-button">Update Attacks</button>
       </div>
-      {{/each}}
+      <div class="sheexcel-attacks-grid">
+        {{#each groupedReferences.attacks}}
+        <div class="attack-entry">
+          <strong class="attack-name">{{this.attackName}}</strong>
+          {{#if this.attackDetail}}
+          <div class="attack-detail">({{this.attackDetail}})</div>
+          {{/if}}
+          {{#if this.comment}}
+          <div class="attack-comment">{{this.comment}}</div>
+          {{/if}}
+          <div class="attack-details">
+            <select id="damage-mode-{{@index}}" class="sheexcel-damage-mode" data-index="{{@index}}" aria-label="Damage mode">
+              <option value="normal">Damage: Normal</option>
+              <option value="advantage">Damage: Advantage</option>
+              <option value="disadvantage">Damage: Disadvantage</option>
+            </select>
+            <div class="attack-accuracy">
+              Accuracy: {{this.accuracyBreakdown}}
+            </div>
+            <div class="attack-roll-row">
+              <button type="button" class="sheexcel-roll" data-value="{{this.value}}" data-crit="{{this.critRange}}"
+                data-damage="{{this.damage}}">
+                Roll
+              </button>
+              <span class="attack-mod">{{this.value}}</span>
+            </div>
+            <small class="attack-meta">
+              Damage: <code>{{this.damage}}</code>
+               | Crit on ≥ <code>{{this.critRange}}</code>
+            </small>
+          </div>
+        </div>
+        {{/each}}
+      </div>
 
       {{#unless groupedReferences.attacks.length}}
       <i>No attacks defined</i>
@@ -101,20 +166,161 @@
 
     <!-- ▷ Spells Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="spells" style="display:none;">
-      {{#each groupedReferences.spells}}
-      <div>
-        <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
-          {{this.keyword}}
-        </button> → {{this.value}}
+      <div class="sheexcel-spells-toolbar">
+        <button type="button" class="sheexcel-update-spells-button">Update Spells</button>
+        {{#if groupedReferences.spells.length}}
+        <button type="button" class="sheexcel-spells-toggle-groups" data-state="collapsed">Expand All Circles</button>
+        <button type="button" class="sheexcel-spells-toggle-all" data-state="collapsed">Expand All Spells</button>
+        {{/if}}
+      </div>
+      {{#if groupedReferences.spells.length}}
+      {{#each groupedReferences.spellsByCircle}}
+      <div class="sheexcel-spell-circle-group collapsed">
+        <div class="sheexcel-spell-circle-header">
+          <span class="sheexcel-spell-circle-toggle-icon">▶</span>
+          {{this.label}} <span>({{this.spells.length}})</span>
+        </div>
+        <div class="sheexcel-spells-grid">
+          {{#each this.spells}}
+          <div class="sheexcel-spell-card collapsed" data-index="{{this.index}}">
+            <div class="sheexcel-spell-header">
+              <div class="sheexcel-spell-name">{{#if this.spellName}}{{this.spellName}}{{else}}{{this.keyword}}{{/if}}</div>
+              <div class="sheexcel-spell-header-actions">
+                {{#if this.circle}}
+                  <div class="sheexcel-spell-circle">Circle {{this.circle}}</div>
+                {{/if}}
+                <button type="button" class="sheexcel-spell-toggle" data-action="toggle-spell" title="Expand">
+                  <span class="sheexcel-spell-toggle-icon">▶</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="sheexcel-spell-body">
+            <div class="sheexcel-spell-tags">
+              {{#if this.spellType}}<span class="sheexcel-spell-tag">{{this.spellType}}</span>{{/if}}
+              {{#if this.source}}<span class="sheexcel-spell-tag">{{this.source}}</span>{{/if}}
+              {{#if this.discipline}}<span class="sheexcel-spell-tag">{{this.discipline}}</span>{{/if}}
+              {{#if this.components}}<span class="sheexcel-spell-tag">Components: {{this.components}}</span>{{/if}}
+            </div>
+
+            <div class="sheexcel-spell-stats">
+              {{#if this.castTime}}<div><span>Cast</span>{{this.castTime}}</div>{{/if}}
+              {{#if this.cost}}<div><span>Cost</span>{{this.cost}}</div>{{/if}}
+              {{#if this.range}}<div><span>Range</span>{{this.range}}</div>{{/if}}
+              {{#if this.duration}}<div><span>Duration</span>{{this.duration}}</div>{{/if}}
+            </div>
+
+            {{#if this.description}}
+            <div class="sheexcel-spell-section">
+              <div class="sheexcel-spell-section-title">Description</div>
+              <div class="sheexcel-spell-section-text">{{this.description}}</div>
+            </div>
+            {{/if}}
+
+            {{#if this.effect}}
+            <div class="sheexcel-spell-section">
+              <div class="sheexcel-spell-section-title">Effect</div>
+              <div class="sheexcel-spell-section-text">{{this.effect}}</div>
+            </div>
+            {{/if}}
+
+            {{#if this.empower}}
+            <div class="sheexcel-spell-section">
+              <div class="sheexcel-spell-section-title">Empower</div>
+              <div class="sheexcel-spell-section-text">{{this.empower}}</div>
+            </div>
+            {{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
       </div>
       {{/each}}
-      {{#unless groupedReferences.spells.length}}
+      {{else}}
       <i>No spells defined</i>
-      {{/unless}}
+      {{/if}}
     </div>
 
-  </div>
-  <div class="sheexcel-references-controls">
-    <button type="button" class="sheexcel-reference-save-button">Update Values</button>
-  </div>
+    <!-- ▷ Gears Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="gears" style="display:none;">
+      <div class="sheexcel-gears-toolbar">
+        <button type="button" class="sheexcel-update-gears-button">Update Gears</button>
+        {{#if groupedReferences.gearsByType.length}}
+        <button type="button" class="sheexcel-gears-toggle-all-groups" data-state="collapsed">Expand All Groups</button>
+        <button type="button" class="sheexcel-gears-toggle-all-cards" data-state="collapsed">Expand All Items</button>
+        {{/if}}
+      </div>
+      {{#if gearCurrency}}
+      <div class="sheexcel-gear-currency">
+        <div class="sheexcel-gear-currency-block">
+          <div class="sheexcel-gear-currency-title">On Person</div>
+          <div class="sheexcel-gear-currency-values">
+            {{#if gearCurrency.onPerson.gold}}<span class="sheexcel-gear-currency-item">Gold: {{gearCurrency.onPerson.gold}}</span>{{/if}}
+            {{#if gearCurrency.onPerson.silver}}<span class="sheexcel-gear-currency-item">Silver: {{gearCurrency.onPerson.silver}}</span>{{/if}}
+            {{#if gearCurrency.onPerson.copper}}<span class="sheexcel-gear-currency-item">Copper: {{gearCurrency.onPerson.copper}}</span>{{/if}}
+          </div>
+        </div>
+        <div class="sheexcel-gear-currency-block">
+          <div class="sheexcel-gear-currency-title">Banked</div>
+          <div class="sheexcel-gear-currency-values">
+            {{#if gearCurrency.banked.gold}}<span class="sheexcel-gear-currency-item">Gold: {{gearCurrency.banked.gold}}</span>{{/if}}
+            {{#if gearCurrency.banked.silver}}<span class="sheexcel-gear-currency-item">Silver: {{gearCurrency.banked.silver}}</span>{{/if}}
+            {{#if gearCurrency.banked.copper}}<span class="sheexcel-gear-currency-item">Copper: {{gearCurrency.banked.copper}}</span>{{/if}}
+          </div>
+        </div>
+      </div>
+      {{/if}}
+      {{#if groupedReferences.gearsByType.length}}
+      {{#each groupedReferences.gearsByType}}
+      <div class="sheexcel-gear-type-group collapsed">
+        <div class="sheexcel-gear-type-header" data-action="toggle-gear-group">
+          <span class="sheexcel-gear-type-collapse-icon">▶</span>
+          {{this.label}}
+          <span class="sheexcel-gear-type-count">({{this.gears.length}})</span>
+        </div>
+        <div class="sheexcel-gears-grid">
+          {{#each this.gears}}
+          <div class="sheexcel-gear-card collapsed" data-index="{{this.index}}">
+            <div class="sheexcel-gear-header">
+              <div class="sheexcel-gear-name">
+                {{#if this.quantity}}<span class="sheexcel-gear-qty">{{this.quantity}}</span>{{/if}}
+                {{this.gearName}}
+              </div>
+              <div class="sheexcel-gear-header-actions">
+                <button type="button" class="sheexcel-gear-toggle" data-action="toggle-gear" title="Expand">
+                  <span class="sheexcel-gear-toggle-icon">▶</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="sheexcel-gear-body">
+              {{#if this.gearType}}<div class="sheexcel-gear-attribute"><span class="sheexcel-gear-label">Type:</span> {{this.gearType}}</div>{{/if}}
+              {{#if this.value}}<div class="sheexcel-gear-attribute"><span class="sheexcel-gear-label">Value:</span> {{this.value}}</div>{{/if}}
+              {{#if this.weight}}<div class="sheexcel-gear-attribute"><span class="sheexcel-gear-label">Weight:</span> {{this.weight}}</div>{{/if}}
+              {{#if this.bulk}}<div class="sheexcel-gear-attribute"><span class="sheexcel-gear-label">Bulk:</span> {{this.bulk}}</div>{{/if}}
+
+              {{#if this.description}}
+              <div class="sheexcel-gear-section">
+                <div class="sheexcel-gear-section-title">Description</div>
+                <div class="sheexcel-gear-section-text">{{this.description}}</div>
+              </div>
+              {{/if}}
+
+              {{#if this.abilities}}
+              <div class="sheexcel-gear-section">
+                <div class="sheexcel-gear-section-title">Abilities</div>
+                <div class="sheexcel-gear-abilities-list">{{{this.abilities}}}</div>
+              </div>
+              {{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/each}}
+      {{else}}
+      <i>No gears defined</i>
+      {{/if}}
+    </div>
+</div>
 </div>

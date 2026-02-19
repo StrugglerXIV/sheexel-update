@@ -31,7 +31,9 @@ export async function importJsonHandler(event, sheet) {
       attackNameCell: `${r.attackNameCell||""}`,
       critRangeCell: `${r.critRangeCell||""}`,
       damageCell: `${r.damageCell||""}`,
-      subchecks: Array.isArray(r.subchecks) ? r.subchecks : []
+      subchecks: Array.isArray(r.subchecks) ? 
+        r.subchecks.sort((a, b) => (a.keyword || '').localeCompare(b.keyword || '', undefined, { sensitivity: 'base' })) : 
+        []
     }));
     await sheet.actor.setFlag("sheexcel_updated","cellReferences", refs);
   } catch(err) {
