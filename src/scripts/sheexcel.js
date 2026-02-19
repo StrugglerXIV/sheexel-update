@@ -1,5 +1,9 @@
+import { MODULE_NAME, SETTINGS } from "../helpers/constants.js";
+
 // 1) Preload our Handlebars partials before anything renders
 Hooks.once("init", async () => {
+  console.log("🔄 Sheexcel | Module initialization starting...");
+  
   const paths = [
     "modules/sheexcel_updated/templates/partials/main-tab.hbs",
     "modules/sheexcel_updated/templates/partials/references-tab.hbs",
@@ -7,11 +11,14 @@ Hooks.once("init", async () => {
   ];
   try {
     await loadTemplates(paths);
+    console.log("✅ Sheexcel | Templates loaded successfully");
   } catch (err) {
     console.error("❌ Sheexcel | loadTemplates failed:", err);
+    return; // Stop initialization if templates fail
   }
-  // API Key setting
-  game.settings.register("sheexcel_updated", "googleApiKey", {
+  
+  // Google API Key setting
+  game.settings.register(MODULE_NAME, SETTINGS.GOOGLE_API_KEY, {
     name: "Google Sheets API Key",
     hint: "Enter your Google Sheets API key here.",
     scope: "world",
@@ -20,18 +27,29 @@ Hooks.once("init", async () => {
     default: "",
   });
 
-  // Register a client setting (e.g., in your module's main.js)
-  game.settings.register("sheexcel", "rollMode", {
-    name: "Default Roll Mode",
+  // Google OAuth Client ID (for write access)
+  game.settings.register(MODULE_NAME, SETTINGS.GOOGLE_OAUTH_CLIENT_ID, {
+    name: "Google OAuth Client ID",
+    hint: "OAuth Client ID for write access (Google Identity Services).",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "",
+  });
+
+  // Roll mode setting (client)
+  game.settings.register("sheexcel", SETTINGS.ROLL_MODE, {
+    name: "Default Roll Mode", 
     scope: "client",
     config: false,
     type: String,
     default: "norm"
   });
 
-  game.settings.register("sheexcel", "damageModes", {
+  // Damage modes setting (client)
+  game.settings.register("sheexcel", SETTINGS.DAMAGE_MODES, {
     name: "Attack Damage Modes",
-    scope: "client",
+    scope: "client", 
     config: false,
     type: Object,
     default: {}

@@ -1,4 +1,51 @@
 /**
+ * Reorder checks by inserting the dragged check at a specific position.
+ * @param {SheexcelActorSheet} sheet - The sheet instance
+ * @param {string} draggedId - The ID of the dragged check
+ * @param {string} targetId - The ID of the target check
+ * @param {string} position - Either 'before' or 'after'
+ */
+export async function reorderCheck(sheet, draggedId, targetId, position = 'after') {
+  let checks = foundry.utils.deepClone(sheet.actor.getFlag("sheexcel_updated", "cellReferences") || []);
+  if (!checks.length) {
+    console.warn("❌ Sheexcel | No checks available for reordering");
+    return;
+  }
+
+  // Find and remove the dragged check (only from root level)
+  const draggedIndex = checks.findIndex(check => check.id === draggedId);
+  if (draggedIndex === -1) {
+    console.warn(`❌ Sheexcel | Dragged check ${draggedId} not found at root level`);
+    return;
+  }
+
+  // Find target index
+  const targetIndex = checks.findIndex(check => check.id === targetId);
+  if (targetIndex === -1) {
+    console.warn(`❌ Sheexcel | Target check ${targetId} not found at root level`);
+    return;
+  }
+
+  // Remove the dragged check
+  const [draggedCheck] = checks.splice(draggedIndex, 1);
+  
+  // Calculate new insertion index (adjust for removed item)
+  let newIndex = targetIndex;
+  if (draggedIndex < targetIndex) {
+    newIndex--; // Adjust because we removed an item before the target
+  }
+  
+  if (position === 'before') {
+    checks.splice(newIndex, 0, draggedCheck);
+  } else {
+    checks.splice(newIndex + 1, 0, draggedCheck);
+  }
+
+  await sheet.actor.setFlag("sheexcel_updated", "cellReferences", checks);
+  sheet.render(false);
+}
+
+/**
  * Move a check as a subcheck of another check.
  * @param {SheexcelActorSheet} sheet - The sheet instance (usually 'this')
  * @param {string} draggedId - The ID of the dragged check
@@ -6,24 +53,30 @@
  */
 export async function nestCheck(sheet, draggedId, targetId) {
   let checks = foundry.utils.deepClone(sheet.actor.getFlag("sheexcel_updated", "cellReferences") || []);
-  if (!checks.length) return;
+  if (!checks.length) {
+    console.warn("❌ Sheexcel | No checks available for nesting");
+    return;
+  }
 
+  // Recursive function to remove a check and return it
   function removeCheck(checksArr, id) {
     for (let i = 0; i < checksArr.length; i++) {
       if (checksArr[i].id === id) {
         return checksArr.splice(i, 1)[0];
       }
-      if (checksArr[i].subchecks) {
+      if (Array.isArray(checksArr[i].subchecks)) {
         const found = removeCheck(checksArr[i].subchecks, id);
         if (found) return found;
       }
     }
     return null;
   }
+  
+  // Recursive function to find a check
   function findCheck(checksArr, id) {
     for (let check of checksArr) {
       if (check.id === id) return check;
-      if (check.subchecks) {
+      if (Array.isArray(check.subchecks)) {
         const found = findCheck(check.subchecks, id);
         if (found) return found;
       }
@@ -32,11 +85,25 @@ export async function nestCheck(sheet, draggedId, targetId) {
   }
 
   const draggedCheck = removeCheck(checks, draggedId);
-  if (!draggedCheck) return;
+  if (!draggedCheck) {
+    console.warn(`❌ Sheexcel | Could not find check with ID: ${draggedId}`);
+    return;
+  }
+  
   const targetCheck = findCheck(checks, targetId);
-  if (!targetCheck) return;
+  if (!targetCheck) {
+    console.warn(`❌ Sheexcel | Could not find target check with ID: ${targetId}`);
+    return;
+  }
+  
+  // Initialize subchecks array if it doesn't exist
   targetCheck.subchecks = targetCheck.subchecks || [];
   targetCheck.subchecks.push(draggedCheck);
+  
+  // Sort subchecks alphabetically by keyword
+  targetCheck.subchecks.sort((a, b) => 
+    (a.keyword || '').localeCompare(b.keyword || '', undefined, { sensitivity: 'base' })
+  );
 
   await sheet.actor.setFlag("sheexcel_updated", "cellReferences", checks);
   sheet.render(false);
@@ -49,26 +116,29 @@ export async function nestCheck(sheet, draggedId, targetId) {
  */
 export async function moveCheckToRoot(sheet, checkId) {
   let checks = foundry.utils.deepClone(sheet.actor.getFlag("sheexcel_updated", "cellReferences") || []);
-  if (!checks.length) return;
-  let movedCheck = null;
-
+  if (!checks.length) {
+    console.warn("❌ Sheexcel | No checks available to move");
+    return;
+  }
+  
+  // Recursive function to remove a check and return it
   function removeCheck(checksArr, id) {
     for (let i = 0; i < checksArr.length; i++) {
       if (checksArr[i].id === id) {
-        movedCheck = checksArr.splice(i, 1)[0];
-        return true; // Stop searching after removal
+        return checksArr.splice(i, 1)[0];
       }
-      if (Array.isArray(checksArr[i].subchecks) && checksArr[i].subchecks.length) {
-        if (removeCheck(checksArr[i].subchecks, id)) return true;
+      if (Array.isArray(checksArr[i].subchecks)) {
+        const found = removeCheck(checksArr[i].subchecks, id);
+        if (found) return found;
       }
     }
-    return false;
+    return null;
   }
 
-  removeCheck(checks, checkId);
+  const movedCheck = removeCheck(checks, checkId);
 
   if (!movedCheck) {
-    console.warn("No check found to move for id:", checkId);
+    console.warn(`❌ Sheexcel | No check found to move for id: ${checkId}`);
     return;
   }
 

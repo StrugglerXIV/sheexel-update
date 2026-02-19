@@ -1,132 +1,86 @@
-# Sheexcel-Updated
+# Sheexcel Updated (Foundry VTT)
 
-**Excel in your Sheets** – A Foundry VTT module that lets you map cells from a Google Sheet directly into your actor sheet, then roll checks, saves, attacks and spells with live values.
+Sheexcel Updated links Google Sheets to Foundry VTT actor sheets. It reads data from a Google Sheet and renders checks, saves, attacks, spells, gear, armor, and stats in a custom sheet. Optional write-back lets you edit HP/Vitality and some stats from Foundry.
 
----
+## Features
 
-## 📖 Overview
+- Read data from a Google Sheet into a custom Foundry actor sheet
+- Checks/saves/attacks/spells/gears auto-scan from the Core sheet and other tabs
+- HP and Vitality orbs with live values
+- Armor and Stats summary blocks
+- Optional write-back to Google Sheets for HP/Vitality and selected stats
 
-Sheexcel-Updated embeds a Google Sheet in your character’s sheet sidebar and lets you:
+## Installation (GitHub)
 
-- **Map** individual cells to “keywords” (e.g. “Athletics”, “Perception”, “Fireball Damage”).
-- **Group** them into four subtabs: **Checks**, **Saves**, **Attacks**, **Spells**.
-- **Roll** straight from your sheet via clickable buttons, with configurable Advantage/Normal/Disadvantage.
-- **Import/Export** your entire cell-to-keyword mapping as JSON, so you can share presets.
-- **Batch-fetch** dozens of cells in one API call to minimize rate limits.
-- **Customize Attacks** with extra fields:  
-  • Name cell • Damage formula cell • Crit range cell  
-  – Crit damage is calculated by doubling positive die results and positive modifiers only.
-- **Situational Bonuses** via a prompt, anywhere you roll.
+1. Download or clone this repository.
+2. Copy the folder to your Foundry data directory:
+   - `FoundryVTT/Data/modules/sheexcel_updated`
+3. Enable the module in Foundry: **Setup** -> **Add-on Modules** -> **Sheexcel Updated**.
 
----
+## Required Setup
 
-## 🚀 Features
+### 1) Google Sheets API Key (Read)
 
-1. **Live Embedding**  
-   Display your Google Sheet (with or without menus) right inside Foundry.
+This module reads from Google Sheets using an API key.
 
-2. **Dynamic References**  
-   Define any number of “references” by cell address, sheet name and keyword.  
-   └ Mapped values appear in both the References tab and in the Main view.
+1. Create a project in Google Cloud Console.
+2. Enable **Google Sheets API**.
+3. Create an **API key**.
+4. In Foundry: **Module Settings** -> **Sheexcel Updated** -> paste the API key.
 
-3. **Four Subtabs**  
-   - **Checks** – Skill checks  
-   - **Saves** – Saving throws  
-   - **Attacks** – Attack rolls (with name, damage & crit range)  
-   - **Spells** – Spell DCs or other spell‐based values
+### 2) Sheet URL
 
-4. **Click-to-Roll**  
-   Buttons on each keyword roll a d20 (with mod), optionally with advantage/disadvantage.
+Open the actor sheet and enter the Google Sheet URL in the Configuration tab, then click **Update Sheet**.
 
-5. **Critical Damage**  
-   Attack rolls detect crits (≥ your crit range) and auto-roll & post doubled damage.
+## Optional: Write-back to Google Sheets (Edit HP/Vitality/Stats)
 
-6. **JSON Import/Export**  
-   Map hundreds of references in one go by uploading a JSON file.
+To write back, you must use OAuth (Google does not allow writes with API key alone).
 
-7. **Search Bar**  
-   Quickly filter the visible keywords in the Main tab.
+1. Create an OAuth Client ID (Web application).
+2. Add your Foundry URL to **Authorized JavaScript origins**.
+3. In Foundry: **Module Settings** -> **Google OAuth Client ID** -> paste it.
+4. Click the HP or Vitality orb (or editable stat rows) and approve the consent prompt.
 
-8. **Modular Helpers**  
-   Organized into ES modules under `helpers/` for data preparation, JSON import, batch fetching, rolling, situational prompts, etc.
+Notes:
+- This uses Google Identity Services and the `spreadsheets` scope.
+- If the OAuth app is in Testing, add your Google account as a test user.
 
----
+## Sheet Layout Expectations
 
-## 📦 Installation
+The module scans the Core sheet and looks for specific headers and label/value patterns.
 
-1. Clone or download this repository to your Foundry **modules** folder:  
-FoundryVTT/
-└─ modules/
-└─ sheexcel_updated/
-├─ module.json
-├─ scripts/
-├─ helpers/
-└─ templates/
-2. In Foundry’s **Manage Modules**, enable **Sheexcel-Updated**.
-3. Open any Actor of type **Character**, **NPC**, **Creature** or **Vehicle** and switch its sheet to “Sheexcel”.
+### Core sheet
 
----
+- **Checks**: Scans a rectangle near Athletics -> Languages and groups adjacent rows as subchecks.
+- **Saves**: Scans the Core sheet for Save-style labels.
+- **Attacks**: Scans attack blocks that contain `Range`, `Accuracy`, `Critical`, `Damage`, `Special`.
+- **HP/Vitality**: Finds the `Health`/`Vitality` row and reads `Base` and `Tot` columns.
+- **Armor**: Finds the `Armor` header and reads rows below it. Values are embedded in the same cell (e.g., `4 Slash`).
+- **Stats**: Finds the `Stats` header and reads rows below it through `Exhaustion`.
+  - Base and Tot are detected in the header row (or the row below).
+  - Health and Vitality are skipped here (they live in the orbs).
 
-## ⚙️ Configuration
+If your sheet has a different layout, adjust the labels to match the expected headers, or update the scan ranges in code.
 
-1. In the **Settings** tab of your actor sheet, paste a Google Sheet URL and click **Update Sheet**.  
-2. Grant the sheet at least “Viewer” access to your API key (you can supply your own in `batchFetcher.js`).
+## Using the Sheet
 
----
+- **Update Sheet**: pulls sheet metadata and stores sheet info.
+- **Update Skills/Saves/Attacks/Spells/Gears**: scans the sheet and rebuilds references.
+- **Update All**: runs all scans.
+- **Armor/Stats Refresh**: click the refresh icon on each card to re-read values.
+- **HP/Vitality edit**: click the orb, enter a value or `+/-` adjustment.
 
-## 🎲 Usage
+## Notes on Caching
 
-1. **Add References**  
-- Go to **References** → click **Add Reference**  
-- Enter:  
-  - **Cell** (e.g. `D17`)  
-  - **Keyword** (e.g. `Athletics`)  
-  - **Sheet** (e.g. `Core`)  
-  - **Type**: checks/saves/attacks/spells  
+- Armor and Stats values are cached on the actor once loaded. They only update when you click Refresh.
+- Checks/attacks/spells/gears update when you click their respective Update buttons.
 
-2. **Save References**  
-- Click **Save References** to batch-fetch all values.  
-- Values populate in the **Main** → **Checks** (or whichever subtab).
+## Troubleshooting
 
-3. **Roll**  
-- Toggle Advantage/Normal/Disadvantage at top of **Main**.  
-- Click any keyword button to roll.  
-- For **Attacks**, you’ll get a crit check, plus an immediate damage roll.
+- **429 Too Many Requests**: reduce refresh frequency and use manual refresh buttons.
+- **OAuth access_denied**: add your account as a test user or publish the OAuth app.
+- **Values missing**: verify the Core sheet headers (`Stats`, `Armor`, `Base`, `Tot`) and label text.
 
-4. **Import/Export JSON**  
-- Click **Import JSON…** in **References** to bulk-load mappings.  
-- Paste back your exported JSON to replicate your setup elsewhere.
+## License
 
----
-
-## 🗂️ File Structure
-
-sheexcel_updated/
-├ module.json
-├ scripts/
-│ └ sheexcel.js # Main sheet class & hooks
-├ helpers/
-│ ├ prepareData.js # Merge Foundry’s data + flags
-│ ├ importer.js # JSON import/export
-│ ├ batchFetcher.js # Google Sheets batch API calls
-│ ├ roller.js # d20 + damage + situational bonus logic
-│ └ situational.js # Dialog prompt for extra bonuses
-├ templates/
-│ ├ sheet-template.html # Handlebars main template
-│ └ partials/ # Tab partials (main-tab.hbs, references-tab.hbs, settings-tab.hbs)
-└ styles/
-└ sheexcel.css
-
----
-
-## 🤝 Contributing
-
-- Feel free to open issues or PRs to fix bugs, improve performance, or add new features!  
-- Keep helpers small and focused.  
-- Maintain Foundry v11+ compatibility.
-
----
-
-## 📜 License
-
-MIT © Struggler 
+See [module.json](module.json) for module metadata. Add a license file if you plan to distribute publicly.

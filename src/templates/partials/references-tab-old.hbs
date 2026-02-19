@@ -1,0 +1,151 @@
+<div class="sheexcel-sidebar-tab tab references" data-tab="references">
+  <div class="sheexcel-tab-header">
+    <h3>🔗 Cell References</h3>
+    <div class="sheexcel-tab-actions">
+      <button type="button" class="sheexcel-import-json" title="Import references from JSON file">
+        📁 Import
+      </button>
+      <button type="button" class="sheexcel-export-json" title="Export references to JSON file">
+        💾 Export
+      </button>
+    </div>
+  </div>
+  
+  <input type="file" id="sheexcel-json-file" accept="application/json" style="display:none;">
+
+  <div class="sheexcel-references-container">
+    {{#if adjustedReferences.length}}
+      <div class="sheexcel-references-table">
+        <div class="sheexcel-table-header">
+          <div class="sheexcel-header-cell cell-ref">Cell</div>
+          <div class="sheexcel-header-cell keyword">Name</div>
+          <div class="sheexcel-header-cell sheet">Sheet</div>
+          <div class="sheexcel-header-cell type">Type</div>
+          <div class="sheexcel-header-cell value">Value</div>
+          <div class="sheexcel-header-cell actions">Actions</div>
+        </div>
+        
+        <div class="sheexcel-references-list">
+          {{#each adjustedReferences}}
+            <div class="sheexcel-reference-card" data-index="{{this.index}}" data-id="{{this.id}}">
+              <div class="sheexcel-reference-row">
+                <div class="sheexcel-input-group cell-ref">
+                  <input type="text"
+                         class="sheexcel-reference-input"
+                         data-type="cell"
+                         data-index="{{this.index}}"
+                         value="{{this.cell}}"
+                         placeholder="A1"
+                         title="Spreadsheet cell reference (e.g., A1, B5)">
+                </div>
+                
+                <div class="sheexcel-input-group keyword">
+                  <input type="text"
+                         class="sheexcel-reference-input"
+                         data-type="keyword"
+                         data-index="{{this.index}}"
+                         value="{{this.keyword}}"
+                         placeholder="Skill name"
+                         title="Display name for this reference">
+                </div>
+                
+                <div class="sheexcel-input-group sheet">
+                  <select class="sheexcel-reference-input"
+                          data-type="sheet"
+                          data-index="{{this.index}}"
+                          title="Select sheet tab">
+                    {{#each this.sheetNames}}
+                      <option value="{{this}}" {{#if (eq this ../sheet)}}selected{{/if}}>{{this}}</option>
+                    {{/each}}
+                  </select>
+                </div>
+                
+                <div class="sheexcel-input-group type">
+                  <select class="sheexcel-reference-input"
+                          data-type="refType"
+                          data-index="{{this.index}}"
+                          title="Reference category">
+                    <option value="checks"  {{#if (eq this.type "checks")}}selected{{/if}}>Checks</option>
+                    <option value="saves"   {{#if (eq this.type "saves")}}selected{{/if}}>Saves</option>
+                    <option value="attacks" {{#if (eq this.type "attacks")}}selected{{/if}}>Attacks</option>
+                    <option value="spells"  {{#if (eq this.type "spells")}}selected{{/if}}>Spells</option>
+                  </select>
+                </div>
+                
+                <div class="sheexcel-input-group value">
+                  <span class="sheexcel-reference-value-display" title="Current value from spreadsheet">
+                    {{#if this.value}}{{this.value}}{{else}}<em>empty</em>{{/if}}
+                  </span>
+                </div>
+                
+                <div class="sheexcel-input-group actions">
+                  <button type="button" class="sheexcel-action-btn refresh sheexcel-reference-remove-save" 
+                          data-index="{{this.index}}"
+                          title="Refresh value from spreadsheet">
+                    ↻
+                  </button>
+                  <button type="button" class="sheexcel-action-btn delete sheexcel-reference-remove-button"
+                          data-index="{{this.index}}"
+                          title="Remove this reference">
+                    ✕
+                  </button>
+                </div>
+              </div>
+              
+              {{#if (eq this.type "attacks")}}
+                <div class="sheexcel-attack-details">
+                  <div class="sheexcel-attack-row">
+                    <div class="sheexcel-input-group">
+                      <label>Attack Name Cell:</label>
+                      <input type="text"
+                             class="sheexcel-reference-input"
+                             data-type="attackNameCell"
+                             data-index="{{this.index}}"
+                             value="{{this.attackNameCell}}"
+                             placeholder="D9">
+                    </div>
+                    <div class="sheexcel-input-group">
+                      <label>Crit Range Cell:</label>
+                      <input type="text"
+                             class="sheexcel-reference-input"
+                             data-type="critRangeCell"
+                             data-index="{{this.index}}"
+                             value="{{this.critRangeCell}}"
+                             placeholder="E10">
+                    </div>
+                    <div class="sheexcel-input-group">
+                      <label>Damage Cell:</label>
+                      <input type="text"
+                             class="sheexcel-reference-input"
+                             data-type="damageCell"
+                             data-index="{{this.index}}"
+                             value="{{this.damageCell}}"
+                             placeholder="F10">
+                    </div>
+                  </div>
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      </div>
+    {{else}}
+      <div class="sheexcel-empty-state">
+        <div class="sheexcel-empty-icon">
+          ▦
+        </div>
+        <h4>No References Configured</h4>
+        <p>Add cell references to connect your character data with Google Sheets.</p>
+      </div>
+    {{/if}}
+    
+    <div class="sheexcel-references-footer">
+      <button type="button" class="sheexcel-reference-add-button sheexcel-primary-btn">
+        ➕ Add Reference
+      </button>
+      <button type="button" class="sheexcel-reference-save-button sheexcel-secondary-btn">
+        💾 Save Changes
+      </button>
+    </div>
+  </div>
+</div>
