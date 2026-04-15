@@ -84,12 +84,14 @@
           <span aria-hidden="true">☰</span>
         </a>
         <a class="item active sheexcel-sheet-main" data-tab="main">Main</a>
+        <a class="item sheexcel-sheet-sheet" data-tab="sheet">Sheet</a>
         <a class="item sheexcel-sheet-references" data-tab="references">Configuration</a>
         <a class="item sheexcel-sheet-settings" data-tab="settings"></a>
       </nav>
 
       <div class="sheexcel-sidebar {{#if sidebarCollapsed}}collapsed{{/if}}">
         {{> "modules/sheexcel_updated/templates/partials/main-tab.hbs"}}
+        {{> "modules/sheexcel_updated/templates/partials/sheet-tab.hbs"}}
         {{> "modules/sheexcel_updated/templates/partials/references-tab.hbs"}}
         {{> "modules/sheexcel_updated/templates/partials/settings-tab.hbs"}}
       </div>

@@ -5,6 +5,7 @@ import { nestCheck, moveCheckToRoot, reorderCheck } from './dragDrop.js';
 import { onSaveReferences } from "./buttons/saveButton.js";
 import { CSS_CLASSES, SETTINGS } from "./constants.js";
 import { loadingManager } from "./loadingManager.js";
+import { handleInlineRollInteraction } from "./inlineRolls.js";
 
 export function attachSheexcelListeners(sheet, html) {
     html.find('.sheexcel-profile-pic').on('click', ev => {
@@ -48,18 +49,6 @@ export function attachSheexcelListeners(sheet, html) {
         }).render(true);
     });
 
-    html.find('.sheexcel-hp-orb').on('click', ev => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        sheet._promptUpdateStat("HP", ["health", "hp"], "_hpCells", { clampMax: true });
-    });
-
-    html.find('.sheexcel-vitality-orb').on('click', ev => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        sheet._promptUpdateStat("Vitality", ["vitality", "vit"], "_vitCells", { clampMax: false });
-    });
-
     html.find('.sheexcel-armor-refresh').on('click', ev => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -70,25 +59,6 @@ export function attachSheexcelListeners(sheet, html) {
         ev.preventDefault();
         ev.stopPropagation();
         sheet._updateStatsBlock(html, { force: true }).catch(() => {});
-    });
-
-    html.on('click', '.sheexcel-stats-row', ev => {
-        ev.preventDefault();
-        ev.stopPropagation();
-
-        const row = $(ev.currentTarget);
-        const labelKey = String(row.data('statsLabel') || '').trim().toLowerCase();
-        const editable = new Set(['morale', 'wit', 'power', 'bleeds', 'exhaustion']);
-        if (!editable.has(labelKey)) return;
-
-        const grid = row.closest('.sheexcel-stats-grid');
-        const sheetName = String(grid.data('statsSheet') || '').trim();
-        const cell = String(row.data('statsCell') || '').trim();
-        const displayLabel = row.find('.sheexcel-stats-label').text().trim() || labelKey;
-        const currentValue = row.find('.sheexcel-stats-value').text().trim();
-        if (!sheetName || !cell) return;
-
-        sheet._promptUpdateStatsValue(displayLabel, sheetName, cell, currentValue);
     });
 
     const nameWrap = html.find('.sheexcel-actor-name-wrap');
@@ -383,7 +353,7 @@ if (!targetElement || !targetElement.dataset?.checkId) {
     });
 
     html.find(".sheexcel-sheet-toggle").on("click", sheet._onToggleSidebar.bind(sheet));
-    html.find(".sheexcel-sheet-main, .sheexcel-sheet-references, .sheexcel-sheet-settings")
+    html.find(".sheexcel-sheet-main, .sheexcel-sheet-references, .sheexcel-sheet-settings, .sheexcel-sheet-sheet")
         .on("click", sheet._onToggleTab.bind(sheet));
     html.find(".sheexcel-setting-update-sheet").on("click", sheet._onUpdateSheet.bind(sheet));
     html.find('.sheexcel-search').on('input', onSearch.bind(sheet));
@@ -418,6 +388,7 @@ if (!targetElement || !targetElement.dataset?.checkId) {
     html.on("click", ".sheexcel-clear-saves-button", sheet._onClearSaves.bind(sheet));
     html.on("click", ".sheexcel-clear-attacks-button", sheet._onClearAttacks.bind(sheet));
     html.on("click", ".sheexcel-clear-spells-button", sheet._onClearSpells.bind(sheet));
+    html.on("click", ".sheexcel-clear-abilities-button", sheet._onClearAbilities.bind(sheet));
     html.on("click", ".sheexcel-clear-gears-button", sheet._onClearGears.bind(sheet));
     html.on("click", ".sheexcel-reference-remove-button", sheet._onRemoveReference.bind(sheet));
     html.on("click", ".sheexcel-reference-remove-save", function(event) {
@@ -466,6 +437,14 @@ if (!targetElement || !targetElement.dataset?.checkId) {
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-update-spells-button", (ev) => {
         ev.preventDefault();
         sheet._onUpdateSpellsFromSheet(ev);
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-update-abilities-button", (ev) => {
+        ev.preventDefault();
+        sheet._onUpdateAbilitiesFromSheet(ev);
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-update-rest-button", (ev) => {
+        ev.preventDefault();
+        sheet._onUpdateRestFromSheet(ev);
     });
     html.find(".sheexcel-update-all-button").on("click", (ev) => {
         ev.preventDefault();
@@ -553,11 +532,80 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         button.data("state", collapse ? "collapsed" : "expanded");
         button.text(collapse ? "Expand All Spells" : "Collapse All Spells");
     });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-abilities-toggle-all", function(ev) {
+        ev.preventDefault();
+        const button = $(this);
+        const container = button.closest(".sheexcel-main-subtab-content");
+        const groups = container.find(".sheexcel-ability-group");
+        const cards = container.find(".sheexcel-ability-card");
+        const state = button.data("state") || "expanded";
+        const collapse = state === "expanded";
+        groups.toggleClass("collapsed", collapse);
+        groups.find(".sheexcel-spell-circle-toggle-icon").text(collapse ? "▶" : "▼");
+        cards.toggleClass("collapsed", collapse);
+        cards.find(".sheexcel-ability-toggle").attr("title", collapse ? "Expand" : "Collapse");
+        cards.find(".sheexcel-spell-toggle-icon").text(collapse ? "▶" : "▼");
+        button.data("state", collapse ? "collapsed" : "expanded");
+        button.text(collapse ? "Expand All Abilities" : "Collapse All Abilities");
+    });
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-spell-card", (e) => {
         if ($(e.target).closest(".sheexcel-spell-toggle").length) return;
         const index = Number($(e.currentTarget).data("index"));
         if (!Number.isInteger(index)) return;
+        if ($(e.currentTarget).hasClass("sheexcel-ability-card")) {
+            sheet._onPostAbilityToChat(index);
+            return;
+        }
         sheet._onPostSpellToChat(index);
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-rest-section-header", function(ev) {
+        ev.preventDefault();
+        const group = $(this).closest(".sheexcel-rest-section");
+        group.toggleClass("collapsed");
+        const isCollapsed = group.hasClass("collapsed");
+        $(this).find(".sheexcel-rest-section-toggle-icon").text(isCollapsed ? "▶" : "▼");
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-rest-toggle", function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const card = $(this).closest(".sheexcel-rest-card");
+        card.toggleClass("collapsed");
+        const isCollapsed = card.hasClass("collapsed");
+        $(this).attr("title", isCollapsed ? "Expand" : "Collapse");
+        $(this).find(".sheexcel-rest-toggle-icon").text(isCollapsed ? "▶" : "▼");
+    });
+    html.find(".sheexcel-main-subtab-content").on("click keydown", ".sheexcel-rest-line-post, .sheexcel-rest-card-post", function(ev) {
+        if (ev.type === "keydown" && !["Enter", " ", "Spacebar"].includes(ev.key)) return;
+        if ($(ev.target).closest(".sheexcel-inline-roll").length) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const entryIndex = Number($(this).data("entryIndex"));
+        const detailIndex = $(this).data("detailIndex");
+        const lineType = String($(this).data("lineType") || "detail");
+        if (!Number.isInteger(entryIndex)) return;
+        sheet._onPostRestLineToChat(
+            entryIndex,
+            detailIndex == null ? null : Number(detailIndex),
+            lineType
+        );
+    });
+    html.find(".sheexcel-main-subtab-content").on("click keydown", ".sheexcel-inline-roll", (ev) => {
+        handleInlineRollInteraction(
+            ev,
+            () => sheet.actor,
+            (target) => {
+                const restTitle = target.closest(".sheexcel-rest-card")?.querySelector(".sheexcel-rest-title")?.textContent?.trim();
+                if (restTitle) return restTitle;
+
+                const spellOrAbility = target.closest(".sheexcel-spell-card")?.querySelector(".sheexcel-spell-name")?.textContent?.trim();
+                if (spellOrAbility) return spellOrAbility;
+
+                const gear = target.closest(".sheexcel-gear-card")?.querySelector(".sheexcel-gear-name")?.textContent?.trim();
+                if (gear) return gear;
+
+                return "Sheet";
+            }
+        );
     });
     html.find(".sheexcel-main-subtab-nav a.item.active").click();
     html.on("change", "select.sheexcel-reference-input[data-type='refType']", sheet._onRefTypeChange.bind(sheet));
@@ -605,4 +653,128 @@ if (!targetElement || !targetElement.dataset?.checkId) {
             console.error("❌ Sheexcel | Failed to save damage mode:", error);
         }
     });
+
+    // --- Iframe focus scroll-lock ---
+    // When the Google Sheet iframe has focus, the browser auto-scrolls ancestor
+    // containers any time the iframe navigates internally (cell confirm, Enter, etc.).
+    // Fix: while the iframe has focus, run a rAF loop that continuously pins every
+    // scrollable ancestor at its position from when focus entered.
+    // The lock is released the moment focus returns to the Foundry window.
+    const iframe = html.find('.sheexcel-google-sheet')[0];
+    const embedWrapper = html.find('.sheexcel-sheet-google-wrapper')[0];
+    const resizer = html.find('.sheexcel-sheet-resizer')[0];
+
+    if (embedWrapper) {
+        const MIN_EMBED_HEIGHT = 360;
+        const savedEmbedHeight = Number(sheet.actor.getFlag(MODULE_NAME, FLAGS.SHEET_EMBED_HEIGHT));
+
+        if (Number.isFinite(savedEmbedHeight) && savedEmbedHeight > 0) {
+            embedWrapper.style.height = `${Math.max(MIN_EMBED_HEIGHT, Math.round(savedEmbedHeight))}px`;
+        }
+
+        if (resizer) {
+            let startY = 0;
+            let startHeight = 0;
+            let resizing = false;
+
+            const onMouseMove = (ev) => {
+                if (!resizing) return;
+                const delta = ev.clientY - startY;
+                const next = Math.max(MIN_EMBED_HEIGHT, Math.round(startHeight + delta));
+                embedWrapper.style.height = `${next}px`;
+            };
+
+            const onMouseUp = async () => {
+                if (!resizing) return;
+                resizing = false;
+                $(document).off('mousemove.sheexcelResize', onMouseMove);
+                $(document).off('mouseup.sheexcelResize', onMouseUp);
+
+                const finalHeight = Math.max(MIN_EMBED_HEIGHT, Math.round(embedWrapper.getBoundingClientRect().height));
+                try {
+                    await sheet.actor.setFlag(MODULE_NAME, FLAGS.SHEET_EMBED_HEIGHT, finalHeight);
+                } catch (error) {
+                    console.error('❌ Sheexcel | Failed to persist sheet embed height:', error);
+                }
+            };
+
+            $(resizer).on('mousedown', (ev) => {
+                ev.preventDefault();
+                startY = ev.clientY;
+                startHeight = embedWrapper.getBoundingClientRect().height;
+                resizing = true;
+                $(document).on('mousemove.sheexcelResize', onMouseMove);
+                $(document).on('mouseup.sheexcelResize', onMouseUp);
+            });
+
+            html.one('remove', () => {
+                $(document).off('mousemove.sheexcelResize', onMouseMove);
+                $(document).off('mouseup.sheexcelResize', onMouseUp);
+            });
+        }
+    }
+
+    if (iframe) {
+        let lockLoop = null;
+        let locked = null;
+
+        const isSheetTabActive = () => html.find('.sheexcel-sidebar-tab.sheet').hasClass('active');
+
+        const getScrollableAncestors = (el) => {
+            const ancestors = [];
+            let node = el.parentElement;
+            while (node) {
+                const ov = window.getComputedStyle(node).overflowY;
+                if (ov === 'auto' || ov === 'scroll' || ov === 'overlay') {
+                    ancestors.push(node);
+                }
+                node = node.parentElement;
+            }
+            return ancestors;
+        };
+
+        const stopLock = () => {
+            if (lockLoop) { cancelAnimationFrame(lockLoop); lockLoop = null; }
+            locked = null;
+        };
+
+        const runLoop = () => {
+            if (!locked) return;
+            // Only keep the lock while the iframe is focused on the active Sheet tab.
+            if (document.activeElement !== iframe || !isSheetTabActive()) {
+                stopLock();
+                return;
+            }
+            for (const { el, top } of locked) el.scrollTop = top;
+            lockLoop = requestAnimationFrame(runLoop);
+        };
+
+        const onBlur = () => {
+            if (document.activeElement !== iframe || !isSheetTabActive()) return;
+            const ancestors = getScrollableAncestors(iframe);
+            locked = ancestors.map(el => ({ el, top: el.scrollTop }));
+            if (lockLoop) cancelAnimationFrame(lockLoop);
+            lockLoop = requestAnimationFrame(runLoop);
+        };
+
+        const onFocus = () => stopLock();
+
+        window.addEventListener('blur', onBlur);
+        window.addEventListener('focus', onFocus);
+
+        // Defensive stop: if user interacts anywhere outside the iframe, release lock.
+        const onUserInteraction = (ev) => {
+            if ($(ev.target).closest('.sheexcel-google-sheet').length) return;
+            stopLock();
+        };
+        html.on('mousedown wheel keydown touchstart', onUserInteraction);
+
+        // Clean up when the sheet re-renders so listeners don't stack
+        html.one('remove', () => {
+            window.removeEventListener('blur', onBlur);
+            window.removeEventListener('focus', onFocus);
+            html.off('mousedown wheel keydown touchstart', onUserInteraction);
+            stopLock();
+        });
+    }
 }

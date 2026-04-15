@@ -1,5 +1,34 @@
 // helpers/prepareData.js
 import { MODULE_NAME, FLAGS } from './constants.js';
+import { enrichTextWithInlineRolls } from './inlineRolls.js';
+
+function buildSheetOpenUrl(sheetUrl, sheetId) {
+  const rawUrl = String(sheetUrl || '').trim();
+  if (rawUrl) return rawUrl;
+  if (!sheetId) return '';
+  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/edit`;
+}
+
+function buildSheetEmbedUrl(sheetUrl, sheetId) {
+  const fallback = sheetId
+    ? `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/edit`
+    : '';
+
+  const rawUrl = String(sheetUrl || '').trim();
+  if (!rawUrl) return fallback;
+
+  try {
+    // Use the URL as-is, stripping any previously stored minimal-UI params
+    const url = new URL(rawUrl);
+    url.searchParams.delete('rm');
+    url.searchParams.delete('widget');
+    url.searchParams.delete('headers');
+    url.searchParams.delete('chrome');
+    return url.toString();
+  } catch (_error) {
+    return fallback;
+  }
+}
 
 /**
  * Enriches the Foundry-generated sheet data with Sheexcel flags and grouping.
@@ -8,12 +37,43 @@ import { MODULE_NAME, FLAGS } from './constants.js';
  * @returns {Object}      The same data object, mutated with extra fields
  */
 export async function prepareSheetData(data, actor) {
+  const actorId = actor?.id || "";
+  const normalizeDamageType = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(none|null|n\/?a|na|-)$/i.test(raw)) return "";
+    return raw;
+  };
+
+  const normalizeDamageParts = (parts) => {
+    if (!Array.isArray(parts)) return [];
+
+    const seen = new Set();
+    return parts
+      .map((part) => ({
+        ...part,
+        formula: String(part?.formula || "").trim(),
+        type: normalizeDamageType(part?.type)
+      }))
+      .filter((part) => part.formula)
+      .filter((part) => {
+        const key = `${part.formula}::${String(part.type || "").toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  };
+
   // Pull in your saved flags from the actor
   data.sheetUrl         = actor.getFlag(MODULE_NAME, FLAGS.SHEET_URL) || "";
+  data.sheetId          = actor.getFlag(MODULE_NAME, FLAGS.SHEET_ID) || "";
   data.hideMenu         = actor.getFlag(MODULE_NAME, FLAGS.HIDE_MENU) || false;
   data.zoomLevel        = actor.getFlag(MODULE_NAME, FLAGS.ZOOM_LEVEL) ?? 100;
   data.sidebarCollapsed = actor.getFlag(MODULE_NAME, FLAGS.SIDEBAR_COLLAPSED) || false;
   data.gearCurrency      = actor.getFlag(MODULE_NAME, FLAGS.GEAR_CURRENCY) || null;
+  const rawRestEntries   = actor.getFlag(MODULE_NAME, FLAGS.REST_ENTRIES) || [];
+  data.sheetOpenUrl     = buildSheetOpenUrl(data.sheetUrl, data.sheetId);
+  data.sheetEmbedUrl    = buildSheetEmbedUrl(data.sheetUrl, data.sheetId);
 
   // Read refs & sheetNames from the actor
   const refs       = actor.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || [];
@@ -27,10 +87,21 @@ export async function prepareSheetData(data, actor) {
       .slice() // Create a copy to avoid mutating original
       .sort((a, b) => (a.keyword || '').localeCompare(b.keyword || '', undefined, { sensitivity: 'base' }));
     
+    const damageParts = normalizeDamageParts(r.damageParts);
+
     return {
       ...r,
       index: i,
       sheetNames,
+      descriptionHtml: enrichTextWithInlineRolls(r.description || "", { actorId, contextLabel: r.abilityName || r.spellName || r.gearName || r.keyword || "Entry" }),
+      effectHtml: enrichTextWithInlineRolls(r.effect || "", { actorId, contextLabel: r.abilityName || r.spellName || r.gearName || r.keyword || "Entry" }),
+      notesHtml: enrichTextWithInlineRolls(r.notes || "", { actorId, contextLabel: r.abilityName || r.keyword || "Ability" }),
+      empowerHtml: enrichTextWithInlineRolls(r.empower || "", { actorId, contextLabel: r.spellName || r.keyword || "Spell" }),
+      gearDescriptionHtml: enrichTextWithInlineRolls(r.description || "", { actorId, contextLabel: r.gearName || r.keyword || "Gear" }),
+      gearAbilitiesHtml: enrichTextWithInlineRolls(r.abilities || "", { actorId, allowHtml: true, contextLabel: r.gearName || r.keyword || "Gear" }),
+      damageType: normalizeDamageType(r.damageType),
+      damageParts,
+      hasMultiDamageParts: damageParts.length > 1,
       // Attack-specific fields with safe defaults
       attackNameCell: r.attackNameCell || "",
       critRangeCell:  r.critRangeCell  || "",
@@ -50,6 +121,7 @@ export async function prepareSheetData(data, actor) {
     saves: [], 
     attacks: [], 
     spells: [],
+    abilities: [],
     gears: []
   };
   
@@ -113,6 +185,32 @@ export async function prepareSheetData(data, actor) {
 
   data.groupedReferences.spellsByCircle = spellsByCircle;
 
+  const abilities = data.groupedReferences.abilities || [];
+  data.groupedReferences.abilities = abilities.sort((a, b) => {
+    const aName = String(a?.abilityName || a?.keyword || "").trim();
+    const bName = String(b?.abilityName || b?.keyword || "").trim();
+    return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+  });
+
+  const normalizeAbilityCategory = (value) => String(value || "").trim();
+  const abilityGroupMap = new Map();
+  data.groupedReferences.abilities.forEach((ability) => {
+    const category = normalizeAbilityCategory(ability.category) || "Other";
+    if (!abilityGroupMap.has(category)) abilityGroupMap.set(category, []);
+    abilityGroupMap.get(category).push(ability);
+  });
+
+  data.groupedReferences.abilitiesByCategory = Array.from(abilityGroupMap.entries())
+    .map(([label, list]) => ({
+      label,
+      abilities: list.sort((a, b) => {
+        const aName = String(a?.abilityName || a?.keyword || "").trim();
+        const bName = String(b?.abilityName || b?.keyword || "").trim();
+        return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+      })
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+
   // Group gears by predefined categories based on type keywords
   const gears = data.groupedReferences.gears || [];
   
@@ -168,6 +266,50 @@ export async function prepareSheetData(data, actor) {
   }
 
   data.groupedReferences.gearsByType = gearsByType;
+
+  const restEntries = Array.isArray(rawRestEntries) ? rawRestEntries : [];
+  const restSectionMap = new Map();
+
+  restEntries.forEach((entry, index) => {
+    const section = String(entry?.section || "Rest").trim() || "Rest";
+    const title = String(entry?.title || "").trim();
+    const postFullCard = /^(start of rest|end of rest)$/i.test(title);
+    const normalized = {
+      ...entry,
+      index,
+      section,
+      title,
+      postFullCard,
+      summary: String(entry?.summary || "").trim(),
+      summaryHtml: enrichTextWithInlineRolls(entry?.summary || "", { actorId, contextLabel: entry?.title || "Rest" }),
+      details: Array.isArray(entry?.details)
+        ? entry.details
+          .map((detail) => {
+            if (typeof detail === "string") {
+              return { text: detail.trim(), html: enrichTextWithInlineRolls(detail, { actorId, contextLabel: entry?.title || "Rest" }), level: 1 };
+            }
+
+            return {
+              text: String(detail?.text || "").trim(),
+              html: enrichTextWithInlineRolls(detail?.text || "", { actorId, contextLabel: entry?.title || "Rest" }),
+              level: Math.max(1, Number(detail?.level) || 1)
+            };
+          })
+          .filter((detail) => detail.text)
+        : []
+    };
+
+    if (!restSectionMap.has(section)) restSectionMap.set(section, []);
+    restSectionMap.get(section).push(normalized);
+  });
+
+  data.restSheet = {
+    entries: restEntries,
+    sections: Array.from(restSectionMap.entries()).map(([label, entries]) => ({
+      label,
+      entries
+    }))
+  };
 
   return data;
 }

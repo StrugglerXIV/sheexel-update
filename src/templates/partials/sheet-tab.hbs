@@ -1,0 +1,30 @@
+<div class="sheexcel-sidebar-tab tab sheet" data-tab="sheet">
+  <div class="sheexcel-sheet-embed-header">
+    <div>
+      <h3>Sheet</h3>
+      <div class="sheexcel-sheet-embed-subtitle">Embedded Google Sheet access inside the actor sheet.</div>
+    </div>
+    {{#if sheetOpenUrl}}
+    <a class="sheexcel-sheet-open-button" href="{{sheetOpenUrl}}" target="_blank" rel="noopener noreferrer">Open in Browser</a>
+    {{/if}}
+  </div>
+
+  {{#if sheetEmbedUrl}}
+  <div class="sheexcel-sheet-google-wrapper sheexcel-sheet-embed-wrapper">
+    <iframe
+      class="sheexcel-google-sheet"
+      src="{{sheetEmbedUrl}}"
+      title="Google Sheet"
+      loading="lazy"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen>
+    </iframe>
+    <div class="sheexcel-sheet-resizer" title="Drag to resize"></div>
+  </div>
+  <div class="sheexcel-sheet-embed-note">If Google blocks editing in the embedded view, use Open in Browser.</div>
+  {{else}}
+  <div class="sheexcel-rest-empty">
+    <i>Add a Google Sheet URL in Settings and click Update Sheet to enable the embedded sheet view.</i>
+  </div>
+  {{/if}}
+</div>

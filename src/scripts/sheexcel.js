@@ -1,19 +1,19 @@
 import { MODULE_NAME, SETTINGS } from "../helpers/constants.js";
+import { handleInlineRollInteraction } from "../helpers/inlineRolls.js";
 
 // 1) Preload our Handlebars partials before anything renders
 Hooks.once("init", async () => {
-  console.log("🔄 Sheexcel | Module initialization starting...");
-  
   const paths = [
     "modules/sheexcel_updated/templates/partials/main-tab.hbs",
+    "modules/sheexcel_updated/templates/partials/sheet-tab.hbs",
+    "modules/sheexcel_updated/templates/partials/rest-tab.hbs",
     "modules/sheexcel_updated/templates/partials/references-tab.hbs",
     "modules/sheexcel_updated/templates/partials/settings-tab.hbs"
   ];
   try {
     await loadTemplates(paths);
-    console.log("✅ Sheexcel | Templates loaded successfully");
   } catch (err) {
-    console.error("❌ Sheexcel | loadTemplates failed:", err);
+    console.error("❌ Sheexcel | loadTemplates failed:", err, { paths });
     return; // Stop initialization if templates fail
   }
   
@@ -21,16 +21,6 @@ Hooks.once("init", async () => {
   game.settings.register(MODULE_NAME, SETTINGS.GOOGLE_API_KEY, {
     name: "Google Sheets API Key",
     hint: "Enter your Google Sheets API key here.",
-    scope: "world",
-    config: true,
-    type: String,
-    default: "",
-  });
-
-  // Google OAuth Client ID (for write access)
-  game.settings.register(MODULE_NAME, SETTINGS.GOOGLE_OAUTH_CLIENT_ID, {
-    name: "Google OAuth Client ID",
-    hint: "OAuth Client ID for write access (Google Identity Services).",
     scope: "world",
     config: true,
     type: String,
@@ -84,6 +74,47 @@ Hooks.once("ready", () => {
     },
     "WRAPPER"
   );
+
+  $(document).on("click keydown", ".chat-message .sheexcel-inline-roll", (event) => {
+    Promise.resolve(handleInlineRollInteraction(
+      event,
+      null,
+      (target) => {
+        const message = target.closest(".chat-message");
+        const spellTitle = message?.querySelector(".sheexcel-spell-chat-title")?.textContent?.trim();
+        if (spellTitle) return spellTitle;
+
+        const restTitle = message?.querySelector(".sheexcel-spell-chat-sub")?.textContent?.trim();
+        if (restTitle) return restTitle;
+
+        return "Chat Card";
+      }
+    ))
+      .catch((error) => {
+        console.error("❌ Sheexcel | chat inline roll handler failed", error);
+      });
+  });
+});
+
+Hooks.on("renderChatMessage", (message, html) => {
+  const inlineRollCount = html.find(".sheexcel-inline-roll").length;
+  if (!inlineRollCount) return;
+
+  html.find(".sheexcel-inline-roll").each((_, el) => {
+    const node = el;
+    const handler = (ev) => {
+      handleInlineRollInteraction(ev, null, (target) => {
+        const spellTitle = html.find(".sheexcel-spell-chat-title").text().trim();
+        if (spellTitle) return spellTitle;
+        const restTitle = html.find(".sheexcel-spell-chat-sub").text().trim();
+        if (restTitle) return restTitle;
+        return "Chat Card";
+      });
+    };
+
+    node.addEventListener("click", handler);
+    node.addEventListener("keydown", handler);
+  });
 });
 
 // --- Sheet Resizer ---

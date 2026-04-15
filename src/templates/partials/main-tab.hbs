@@ -31,10 +31,12 @@
     <!-- ▷ Subtab Navigation -->
     <nav class="sheexcel-main-subtab-nav tabs" data-group="secondary">
       <a class="item active" data-tab="checks">Checks</a>
+      <a class="item" data-tab="abilities">Abilities</a>
       <a class="item" data-tab="saves">Saves</a>
       <a class="item" data-tab="attacks">Attacks</a>
       <a class="item" data-tab="spells">Spells</a>
       <a class="item" data-tab="gears">Gears</a>
+      <a class="item" data-tab="rest">Rest</a>
     </nav>
 
     <!-- ▷ Search Bar -->
@@ -99,6 +101,75 @@
       {{/if}}
     </div>
 
+    <!-- ▷ Abilities Pane -->
+    <div class="sheexcel-main-subtab-content" data-tab="abilities" style="display:none;">
+      <div class="sheexcel-spells-toolbar">
+        <button type="button" class="sheexcel-update-abilities-button">Update Abilities</button>
+        {{#if groupedReferences.abilities.length}}
+        <button type="button" class="sheexcel-abilities-toggle-all" data-state="collapsed">Expand All Abilities</button>
+        {{/if}}
+      </div>
+      {{#if groupedReferences.abilitiesByCategory.length}}
+      {{#each groupedReferences.abilitiesByCategory}}
+      <div class="sheexcel-spell-circle-group collapsed sheexcel-ability-group">
+        <div class="sheexcel-spell-circle-header sheexcel-ability-group-header">
+          <span class="sheexcel-spell-circle-toggle-icon">▶</span>
+          {{this.label}} <span>({{this.abilities.length}})</span>
+        </div>
+        <div class="sheexcel-spells-grid sheexcel-abilities-grid">
+          {{#each this.abilities}}
+          <div class="sheexcel-spell-card sheexcel-ability-card collapsed" data-index="{{this.index}}">
+            <div class="sheexcel-spell-header">
+              <div class="sheexcel-spell-name">{{#if this.abilityName}}{{this.abilityName}}{{else}}{{this.keyword}}{{/if}}</div>
+              <div class="sheexcel-spell-header-actions">
+                {{#if this.cost}}
+                  <div class="sheexcel-spell-circle">Cost {{this.cost}}</div>
+                {{/if}}
+                <button type="button" class="sheexcel-spell-toggle sheexcel-ability-toggle" data-action="toggle-ability" title="Expand">
+                  <span class="sheexcel-spell-toggle-icon">▶</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="sheexcel-spell-body">
+            <div class="sheexcel-spell-tags">
+              {{#if this.target}}<span class="sheexcel-spell-tag">Target: {{this.target}}</span>{{/if}}
+              {{#if this.range}}<span class="sheexcel-spell-tag">Range: {{this.range}}</span>{{/if}}
+              {{#if this.duration}}<span class="sheexcel-spell-tag">Duration: {{this.duration}}</span>{{/if}}
+              {{#if this.trigger}}<span class="sheexcel-spell-tag">Trigger: {{this.trigger}}</span>{{/if}}
+            </div>
+
+            {{#if this.description}}
+            <div class="sheexcel-spell-section">
+              <div class="sheexcel-spell-section-title">Description</div>
+              <div class="sheexcel-spell-section-text">{{{this.descriptionHtml}}}</div>
+            </div>
+            {{/if}}
+
+            {{#if this.effect}}
+            <div class="sheexcel-spell-section">
+              <div class="sheexcel-spell-section-title">Effect</div>
+              <div class="sheexcel-spell-section-text">{{{this.effectHtml}}}</div>
+            </div>
+            {{/if}}
+
+            {{#if this.notes}}
+            <div class="sheexcel-spell-section">
+              <div class="sheexcel-spell-section-title">Notes</div>
+              <div class="sheexcel-spell-section-text">{{{this.notesHtml}}}</div>
+            </div>
+            {{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/each}}
+      {{else}}
+      <i>No abilities defined</i>
+      {{/if}}
+    </div>
+
 
     <!-- ▷ Saves Pane -->
     <div class="sheexcel-main-subtab-content" data-tab="saves" style="display:none;">
@@ -144,15 +215,26 @@
             </div>
             <div class="attack-roll-row">
               <button type="button" class="sheexcel-roll" data-value="{{this.value}}" data-crit="{{this.critRange}}"
-                data-damage="{{this.damage}}">
+                data-damage="{{this.damage}}" data-damage-type="{{this.damageType}}" data-ref-index="{{this.index}}">
                 Roll
               </button>
               <span class="attack-mod">{{this.value}}</span>
             </div>
-            <small class="attack-meta">
-              Damage: <code>{{this.damage}}</code>
+            {{#if this.hasMultiDamageParts}}
+            <small class="attack-meta muted">Multiple damage parts • Crit on ≥ <code>{{this.critRange}}</code></small>
+            <div class="attack-meta damage-parts">
+              {{#each this.damageParts}}
+              <div class="damage-part"><code>{{this.formula}}</code>{{#if this.type}} <span class="muted">{{this.type}}</span>{{/if}}</div>
+              {{/each}}
+            </div>
+            {{else}}
+            <small class="attack-meta">Damage: <code>{{this.damage}}</code>
+              {{#if this.damageType}}
+               | Type: <code>{{this.damageType}}</code>
+              {{/if}}
                | Crit on ≥ <code>{{this.critRange}}</code>
             </small>
+            {{/if}}
           </div>
         </div>
         {{/each}}
@@ -213,21 +295,21 @@
             {{#if this.description}}
             <div class="sheexcel-spell-section">
               <div class="sheexcel-spell-section-title">Description</div>
-              <div class="sheexcel-spell-section-text">{{this.description}}</div>
+              <div class="sheexcel-spell-section-text">{{{this.descriptionHtml}}}</div>
             </div>
             {{/if}}
 
             {{#if this.effect}}
             <div class="sheexcel-spell-section">
               <div class="sheexcel-spell-section-title">Effect</div>
-              <div class="sheexcel-spell-section-text">{{this.effect}}</div>
+              <div class="sheexcel-spell-section-text">{{{this.effectHtml}}}</div>
             </div>
             {{/if}}
 
             {{#if this.empower}}
             <div class="sheexcel-spell-section">
               <div class="sheexcel-spell-section-title">Empower</div>
-              <div class="sheexcel-spell-section-text">{{this.empower}}</div>
+              <div class="sheexcel-spell-section-text">{{{this.empowerHtml}}}</div>
             </div>
             {{/if}}
             </div>
@@ -302,14 +384,14 @@
               {{#if this.description}}
               <div class="sheexcel-gear-section">
                 <div class="sheexcel-gear-section-title">Description</div>
-                <div class="sheexcel-gear-section-text">{{this.description}}</div>
+                <div class="sheexcel-gear-section-text">{{{this.gearDescriptionHtml}}}</div>
               </div>
               {{/if}}
 
               {{#if this.abilities}}
               <div class="sheexcel-gear-section">
                 <div class="sheexcel-gear-section-title">Abilities</div>
-                <div class="sheexcel-gear-abilities-list">{{{this.abilities}}}</div>
+                <div class="sheexcel-gear-abilities-list">{{{this.gearAbilitiesHtml}}}</div>
               </div>
               {{/if}}
             </div>
@@ -322,5 +404,7 @@
       <i>No gears defined</i>
       {{/if}}
     </div>
+
+    {{> "modules/sheexcel_updated/templates/partials/rest-tab.hbs"}}
 </div>
 </div>

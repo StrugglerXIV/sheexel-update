@@ -5,7 +5,9 @@ export const MODULE_NAME = "sheexcel_updated";
 export const FLAGS = {
   SHEET_URL: "sheetUrl",
   SHEET_ID: "sheetId", 
+  SHEET_EMBED_HEIGHT: "sheetEmbedHeight",
   CELL_REFERENCES: "cellReferences",
+  REST_ENTRIES: "restEntries",
   BULK_ADD_BACKUP: "bulkAddBackup",
   SHEET_NAMES: "sheetNames",
   GEAR_CURRENCY: "gearCurrency",
@@ -18,7 +20,6 @@ export const FLAGS = {
 
 export const SETTINGS = {
   GOOGLE_API_KEY: "googleApiKey",
-  GOOGLE_OAUTH_CLIENT_ID: "googleOAuthClientId",
   ROLL_MODE: "rollMode", 
   DAMAGE_MODES: "damageModes",
   API_CACHE: "apiCache"

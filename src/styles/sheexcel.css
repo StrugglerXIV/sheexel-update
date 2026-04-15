@@ -169,12 +169,17 @@
 
 /* --- Sidebar Tabs --- */
 .sheexcel-sidebar-tab {
+    display: none;
     background: #241a13;
     border-radius: 8px;
     box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
     padding: 18px 16px 12px 16px;
     margin-bottom: 10px;
     min-width: 250px;
+}
+
+.sheexcel-sidebar-tab.active {
+    display: block;
 }
 
 .sheexcel-sidebar-tab h3 {
@@ -184,6 +189,57 @@
     color: #bfa05a;
     letter-spacing: 1px;
     font-weight: 700;
+}
+
+.sheexcel-sidebar-tab.sheet {
+    flex-direction: column;
+    gap: 0.85rem;
+    overscroll-behavior: contain;
+}
+
+.sheexcel-sidebar-tab.sheet.active {
+    display: flex;
+}
+
+.sheexcel-sheet-embed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.sheexcel-sheet-embed-header h3 {
+    margin-bottom: 0.2rem;
+}
+
+.sheexcel-sheet-embed-subtitle {
+    color: #c7a86d;
+    font-size: 0.86rem;
+    line-height: 1.35;
+}
+
+.sheexcel-sheet-open-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 142px;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(191, 160, 90, 0.72);
+    border-radius: 7px;
+    background: linear-gradient(135deg, rgba(58, 35, 21, 0.95), rgba(34, 22, 14, 0.95));
+    color: #f4dfb0;
+    text-decoration: none;
+    font-weight: 700;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.sheexcel-sheet-open-button:hover,
+.sheexcel-sheet-open-button:focus {
+    color: #fff4d0;
+    border-color: #ffd700;
+    background: linear-gradient(135deg, rgba(88, 58, 34, 0.98), rgba(48, 30, 19, 0.98));
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.18);
+    outline: none;
 }
 
 /* --- Subtab Navigation --- */
@@ -282,7 +338,12 @@
 
 /* --- Subtab Content --- */
 .sheexcel-main-subtab-content {
-    background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    background-image:
+        url('../assets/ui/tile.jpg'),
+        linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    background-repeat: repeat-y, no-repeat;
+    background-position: top left, center;
+    background-size: 100% auto, cover;
     border: 1.5px solid #bfa05a;
     border-radius: 12px;
     box-shadow: 0 2px 12px #0008;
@@ -295,7 +356,12 @@
 }
 
 .sheexcel-main-subtab-content[data-tab="attacks"] {
-    background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    background-image:
+        url('../assets/ui/tile.jpg'),
+        linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    background-repeat: repeat-y, no-repeat;
+    background-position: top left, center;
+    background-size: 100% auto, cover;
     border: 1.5px solid #bfa05a;
     border-radius: 12px;
     box-shadow: 0 2px 12px #0008;
@@ -550,6 +616,36 @@
     font-size: 0.8rem;
 }
 
+.sheexcel-main-subtab-content[data-tab="attacks"] .damage-parts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.1rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="attacks"] .damage-part {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid rgba(191, 160, 90, 0.28);
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(36, 22, 14, 0.9) 0%, rgba(26, 20, 15, 0.86) 100%);
+    color: #d9c18a;
+}
+
+.sheexcel-main-subtab-content[data-tab="attacks"] .damage-part .muted {
+    color: #bfa05a;
+}
+
+.sheexcel-main-subtab-content[data-tab="attacks"] .damage-part code {
+    background: rgba(191, 160, 90, 0.16);
+    color: #f0e6d0;
+    border: 1px solid rgba(191, 160, 90, 0.4);
+    border-radius: 4px;
+    padding: 0.08rem 0.3rem;
+}
+
 .sheexcel-main-subtab-content[data-tab="attacks"] small code {
     background: rgba(191, 160, 90, 0.2);
     color: #f0e6d0;
@@ -800,7 +896,9 @@
 
 /* --- Misc --- */
 .sheexcel-sheet-header {
-    background: url('../assets/ui/tile.jpg'), linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
+    background-image:
+        url('../assets/ui/tile.jpg'),
+        linear-gradient(120deg, #1a140f 80%, #2d1a0f 100%);
     font-size: 50px;
     color: #bfa05a;
     font-weight: 700;
@@ -854,6 +952,233 @@
     opacity: 100%;
 }
 
+.sheexcel-main-subtab-content[data-tab="rest"] {
+    display: block;
+}
+
+.sheexcel-rest-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.8rem;
+}
+
+.sheexcel-rest-header h3 {
+    margin: 0;
+}
+
+.sheexcel-update-rest-button {
+    background: linear-gradient(135deg, #bfa05a 0%, #c7a86d 100%);
+    border: 1px solid #bfa05a;
+    color: #1a140f;
+    border-radius: 999px;
+    padding: 0.25rem 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sheexcel-update-rest-button:hover {
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+}
+
+.sheexcel-rest-section {
+    margin-bottom: 1rem;
+}
+
+.sheexcel-rest-section-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.55rem;
+    padding: 0.2rem 0.75rem;
+    border: 1px solid rgba(191, 160, 90, 0.65);
+    border-radius: 999px;
+    color: #f0e6d0;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    font-size: 0.76rem;
+    background: rgba(191, 160, 90, 0.12);
+    cursor: pointer;
+}
+
+.sheexcel-rest-section-header span {
+    color: #c7a86d;
+}
+
+.sheexcel-rest-section.collapsed .sheexcel-rest-grid {
+    display: none;
+}
+
+.sheexcel-rest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.sheexcel-rest-card {
+    background:
+        radial-gradient(circle at 12% 8%, rgba(199, 168, 109, 0.14), transparent 42%),
+        linear-gradient(160deg, rgba(18, 10, 8, 0.84), rgba(34, 14, 12, 0.9));
+    border: 1px solid rgba(191, 160, 90, 0.7);
+    border-radius: 10px;
+    padding: 0.85rem 0.9rem;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 241, 200, 0.06),
+        0 8px 22px rgba(0, 0, 0, 0.34);
+}
+
+.sheexcel-rest-card:hover {
+    border-color: #d8b36a;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 241, 200, 0.12),
+        0 0 14px rgba(216, 179, 106, 0.2),
+        0 10px 24px rgba(0, 0, 0, 0.45);
+    transform: translateY(-1px);
+}
+
+.sheexcel-rest-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+
+.sheexcel-rest-title {
+    font-size: 0.98rem;
+    font-weight: 800;
+    letter-spacing: 0.35px;
+    color: #f8e7bf;
+    line-height: 1.2;
+}
+
+.sheexcel-rest-toggle {
+    background: rgba(191, 160, 90, 0.15);
+    border: 1px solid rgba(191, 160, 90, 0.65);
+    color: #f0e6d0;
+    border-radius: 6px;
+    width: 27px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.sheexcel-rest-body {
+    margin-top: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.sheexcel-rest-card.collapsed .sheexcel-rest-body {
+    display: none;
+}
+
+.sheexcel-rest-summary {
+    font-size: 0.92rem;
+    color: #f0e4ca;
+    line-height: 1.35;
+    white-space: pre-line;
+    background: rgba(191, 160, 90, 0.08);
+    border: 1px solid rgba(191, 160, 90, 0.18);
+    border-radius: 6px;
+    padding: 0.45rem 0.55rem;
+}
+
+.sheexcel-rest-details {
+    border-top: 1px solid rgba(191, 160, 90, 0.22);
+    padding-top: 0.45rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sheexcel-rest-detail-line {
+    font-size: 0.86rem;
+    color: #d7c5a4;
+    line-height: 1.35;
+    padding-left: 0.4rem;
+    border-left: 2px solid rgba(191, 160, 90, 0.25);
+}
+
+.sheexcel-rest-line-post {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.sheexcel-rest-card-post {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.sheexcel-rest-line-post:hover,
+.sheexcel-rest-line-post:focus,
+.sheexcel-rest-card-post:hover,
+.sheexcel-rest-card-post:focus {
+    background: rgba(191, 160, 90, 0.12);
+    border-color: rgba(255, 215, 0, 0.35);
+    color: #f3e3bf;
+}
+
+.sheexcel-inline-roll {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.02rem 0.28rem;
+    margin: 0 0.08rem;
+    border: 1px solid rgba(191, 160, 90, 0.55);
+    border-radius: 4px;
+    background: rgba(191, 160, 90, 0.16);
+    color: #ffe3a2;
+    cursor: pointer;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.sheexcel-inline-roll:hover,
+.sheexcel-inline-roll:focus {
+    background: rgba(191, 160, 90, 0.28);
+    border-color: #ffd700;
+    color: #fff3d1;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.18);
+    outline: none;
+}
+
+.sheexcel-rest-detail-level-2 {
+    margin-left: 1rem;
+    color: #cfbc97;
+}
+
+.sheexcel-rest-detail-level-3 {
+    margin-left: 2rem;
+    color: #c5b188;
+}
+
+.sheexcel-rest-detail-level-4,
+.sheexcel-rest-detail-level-5,
+.sheexcel-rest-detail-level-6 {
+    margin-left: 3rem;
+    color: #baa67a;
+}
+
+.sheexcel-rest-empty {
+    color: #c7a86d;
+    padding: 0.5rem 0;
+}
+
 .sheexcel-sheet-tabs .sheexcel-sheet-toggle {
     background: none;
     border: none;
@@ -888,10 +1213,21 @@
 .sheexcel-sheet-google-wrapper {
     width: 100%;
     position: relative;
-    min-height: 700px;
-    height: 80px;
+    min-height: 620px;
+    height: 62vh;
     transition: height 0.1s;
     flex-shrink: 0;
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+.sheexcel-sheet-embed-wrapper {
+    border: 1px solid rgba(191, 160, 90, 0.55);
+    border-radius: 10px;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background: linear-gradient(180deg, rgba(20, 14, 10, 0.96), rgba(11, 8, 6, 0.98));
+    box-shadow: inset 0 1px 0 rgba(255, 241, 200, 0.05), 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
 .sheexcel-main-content {
@@ -907,6 +1243,7 @@
     background: #241a13;
     border-radius: 8px 8px 0 0;
     box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+    overscroll-behavior: contain;
 }
 
 /* --- Google Sheet Resizer Bar --- */
@@ -941,6 +1278,12 @@
     border-radius: 3px;
     background: #bfa05a66;
     margin: 0 auto;
+}
+
+.sheexcel-sheet-embed-note {
+    color: #c7a86d;
+    font-size: 0.84rem;
+    line-height: 1.35;
 }
 
 /* --- Path of Exile Theme Enhancements --- */
@@ -1806,6 +2149,14 @@
     opacity: 1;
 }
 
+.sheexcel-search-highlight {
+    background: rgba(255, 215, 0, 0.45);
+    color: #fff7cf;
+    border-radius: 3px;
+    padding: 0 2px;
+    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.35) inset;
+}
+
 .sheexcel-checks-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(250px, 1fr));
@@ -2339,6 +2690,167 @@
 .sheexcel-main-subtab-content[data-tab="spells"] .sheexcel-spell-section-text {
     font-size: 0.85rem;
     color: #f0e6d0;
+    line-height: 1.35;
+    white-space: pre-line;
+}
+
+/* Ability tab styling */
+.sheexcel-main-subtab-content[data-tab="abilities"] {
+    display: block;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spells-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-update-abilities-button,
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-abilities-toggle-all {
+    background: rgba(191, 160, 90, 0.14);
+    border: 1px solid rgba(191, 160, 90, 0.65);
+    color: #f0e6d0;
+    border-radius: 999px;
+    padding: 0.28rem 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-update-abilities-button {
+    background: linear-gradient(135deg, #bfa05a 0%, #c7a86d 100%);
+    color: #1a140f;
+    border-color: #bfa05a;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-update-abilities-button:hover,
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-abilities-toggle-all:hover {
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.22);
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-group {
+    margin-bottom: 0.95rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-group-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.5rem;
+    padding: 0.18rem 0.72rem;
+    border: 1px solid rgba(191, 160, 90, 0.7);
+    border-radius: 999px;
+    color: #f4dfad;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    font-size: 0.76rem;
+    background: linear-gradient(135deg, rgba(191, 160, 90, 0.2), rgba(191, 160, 90, 0.08));
+    cursor: pointer;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-group-header span {
+    color: #c7a86d;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-group.collapsed .sheexcel-abilities-grid {
+    display: none;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-group.collapsed .sheexcel-spell-circle-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-abilities-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-card {
+    background:
+        radial-gradient(circle at 10% 8%, rgba(199, 168, 109, 0.14), transparent 40%),
+        linear-gradient(160deg, rgba(18, 10, 8, 0.84), rgba(34, 14, 12, 0.9));
+    border: 1px solid rgba(191, 160, 90, 0.68);
+    border-radius: 10px;
+    padding: 0.85rem 0.9rem;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 241, 200, 0.06),
+        0 8px 22px rgba(0, 0, 0, 0.34);
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-card:hover {
+    border-color: #d8b36a;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 241, 200, 0.12),
+        0 0 14px rgba(216, 179, 106, 0.2),
+        0 10px 24px rgba(0, 0, 0, 0.45);
+    transform: translateY(-1px);
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.7rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-name {
+    font-size: 0.98rem;
+    font-weight: 800;
+    letter-spacing: 0.35px;
+    color: #f8e7bf;
+    text-transform: none;
+    line-height: 1.2;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-toggle {
+    background: rgba(191, 160, 90, 0.15);
+    border: 1px solid rgba(191, 160, 90, 0.65);
+    color: #f0e6d0;
+    border-radius: 6px;
+    width: 27px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-body {
+    margin-top: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-ability-card.collapsed .sheexcel-spell-body {
+    display: none;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-section {
+    border-top: 1px solid rgba(191, 160, 90, 0.22);
+    padding-top: 0.45rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.65px;
+    color: #d2b57a;
+    text-transform: uppercase;
+    margin-bottom: 0.22rem;
+}
+
+.sheexcel-main-subtab-content[data-tab="abilities"] .sheexcel-spell-section-text {
+    font-size: 0.92rem;
+    color: #f0e4ca;
     line-height: 1.35;
     white-space: pre-line;
 }
@@ -3142,6 +3654,20 @@
     display: flex;
     gap: 16px;
     margin: 12px 24px 0 24px;
+}
+
+/* Hide armor/stats and expand layout when Sheet tab is active */
+.sheexcel-sheet[data-active-tab="sheet"] .sheexcel-top-panels {
+    display: none;
+}
+
+.sheexcel-sheet[data-active-tab="sheet"] .sheexcel-sheet-body {
+    grid-template-rows: 1fr;
+}
+
+.sheexcel-sheet[data-active-tab="sheet"] .sheexcel-sidebar-tab.sheet {
+    flex: 1 1 0;
+    min-height: 0;
 }
 
 .sheexcel-armor-block {

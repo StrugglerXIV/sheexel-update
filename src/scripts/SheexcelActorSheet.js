@@ -5,6 +5,7 @@ import { MODULE_NAME, FLAGS, SETTINGS, CSS_CLASSES, ERROR_MESSAGES, API_CONFIG }
 import { validateSheetUrl, validateCellReference, ValidationError } from "../helpers/validation.js";
 import { loadingManager } from "../helpers/loadingManager.js";
 import { apiCache } from "../helpers/apiCache.js";
+import { enrichTextWithInlineRolls } from "../helpers/inlineRolls.js";
 
 
 // --- Main Sheet Class ---
@@ -26,6 +27,44 @@ export class SheexcelActorSheet extends ActorSheet {
   async getData(opts) {
     const data = await super.getData(opts);
     return prepareSheetData(data, this.actor);
+  }
+
+  async _render(force = false, options = {}) {
+    // Preserve key scroll containers across rerenders to prevent jump-to-top on input updates.
+    const scrollSnapshot = {};
+    const hasElement = Boolean(this.element?.length);
+
+    if (hasElement) {
+      const selectors = [
+        ".window-content",
+        "form.sheexcel-sheet",
+        ".sheexcel-sidebar",
+        ".sheexcel-sidebar-tab.active",
+        ".sheexcel-main-subtabs",
+        ".sheexcel-main-subtab-content:visible",
+        ".sheexcel-references-list"
+      ];
+
+      for (const selector of selectors) {
+        const el = this.element.find(selector)[0];
+        if (!el) continue;
+        if (el.scrollHeight <= el.clientHeight) continue;
+        scrollSnapshot[selector] = el.scrollTop;
+      }
+    }
+
+    await super._render(force, options);
+
+    const restoreScroll = () => {
+      for (const [selector, top] of Object.entries(scrollSnapshot)) {
+        const el = this.element?.find(selector)[0];
+        if (el) el.scrollTop = top;
+      }
+    };
+
+    // Restore immediately, then once more next frame in case Foundry applies late layout updates.
+    restoreScroll();
+    requestAnimationFrame(restoreScroll);
   }
 
   _onRefTypeChange(event) {
@@ -638,59 +677,6 @@ export class SheexcelActorSheet extends ActorSheet {
     });
   }
 
-  async _promptUpdateStatsValue(labelKey, sheetName, cell, currentValue) {
-    try {
-      const sheetId = this.actor.getFlag(MODULE_NAME, FLAGS.SHEET_ID);
-      if (!sheetId) throw new Error("Missing sheet ID. Update Sheet first.");
-
-      const displayLabel = String(labelKey || "").trim();
-      const content = `
-        <form class="sheexcel-stats-edit" style="display:grid;grid-template-columns:1fr;gap:8px;">
-          <label>${displayLabel}</label>
-          <input name="value" type="text" placeholder="e.g., 8 or +2 or -1" value="" />
-        </form>
-      `;
-
-      new Dialog({
-        title: `Update ${displayLabel}`,
-        content,
-        buttons: {
-          update: {
-            label: "Update",
-            callback: async (html) => {
-              const raw = String(html.find("input[name='value']").val() || "").trim();
-              if (!raw) return;
-
-              let nextValue = null;
-              if (/^[+-]\s*\d+(\.\d+)?$/.test(raw)) {
-                const delta = Number(raw.replace(/\s+/g, ""));
-                const base = this._parseRawNumber(currentValue) ?? 0;
-                if (!Number.isFinite(delta)) {
-                  ui.notifications.error("Invalid adjustment value.");
-                  return;
-                }
-                nextValue = base + delta;
-              } else if (/^\d+(\.\d+)?$/.test(raw)) {
-                nextValue = Number(raw);
-              } else {
-                ui.notifications.error("Enter a number or a +/- adjustment.");
-                return;
-              }
-
-              await this._updateSheetValue(sheetId, sheetName, cell, nextValue);
-              await this._updateStatsBlock(this.element, { force: true });
-              ui.notifications.info(`${displayLabel} updated.`);
-            }
-          },
-          cancel: { label: "Cancel" }
-        },
-        default: "update"
-      }).render(true);
-    } catch (error) {
-      ui.notifications.error(error.message || "Update failed.");
-    }
-  }
-
   async _getStatCells(labels, cacheKey) {
     const sheetId = this.actor.getFlag(MODULE_NAME, FLAGS.SHEET_ID);
     if (!sheetId) return null;
@@ -726,177 +712,6 @@ export class SheexcelActorSheet extends ActorSheet {
       sheetName,
       ...this[cacheKey]
     };
-  }
-
-  async _loadGoogleIdentityScript() {
-    if (window.google?.accounts?.oauth2) return;
-    await new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load Google Identity Services."));
-      document.head.appendChild(script);
-    });
-  }
-
-  async _ensureGoogleAccessToken() {
-    const clientId = game.settings.get(MODULE_NAME, SETTINGS.GOOGLE_OAUTH_CLIENT_ID);
-    if (!clientId) throw new Error("Missing Google OAuth Client ID.");
-
-    const now = Date.now();
-    if (this._oauthToken && this._oauthToken.expiresAt > now + 60000) {
-      return this._oauthToken.accessToken;
-    }
-
-    const stored = this._readStoredOAuthToken();
-    if (stored && stored.expiresAt > now + 60000) {
-      this._oauthToken = stored;
-      return stored.accessToken;
-    }
-
-    await this._loadGoogleIdentityScript();
-
-    return new Promise((resolve, reject) => {
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: "https://www.googleapis.com/auth/spreadsheets",
-        callback: (resp) => {
-          if (resp.error) {
-            reject(new Error(resp.error));
-            return;
-          }
-          const expiresIn = Number(resp.expires_in) || 3600;
-          this._oauthToken = {
-            accessToken: resp.access_token,
-            expiresAt: Date.now() + expiresIn * 1000
-          };
-          this._storeOAuthToken(this._oauthToken);
-          resolve(this._oauthToken.accessToken);
-        }
-      });
-
-      tokenClient.requestAccessToken({ prompt: "" });
-    });
-  }
-
-  _storeOAuthToken(token) {
-    try {
-      localStorage.setItem("sheexcel_oauth", JSON.stringify(token));
-    } catch (error) {
-      console.warn("Sheexcel | Failed to store OAuth token", error);
-    }
-  }
-
-  _readStoredOAuthToken() {
-    try {
-      const raw = localStorage.getItem("sheexcel_oauth");
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.accessToken || !parsed?.expiresAt) return null;
-      return parsed;
-    } catch (error) {
-      console.warn("Sheexcel | Failed to read OAuth token", error);
-      return null;
-    }
-  }
-
-  async _updateSheetValue(sheetId, sheetName, cell, value) {
-    const token = await this._ensureGoogleAccessToken();
-    const safeSheet = this._sanitizeSheetName(sheetName);
-    const range = `${safeSheet}!${cell}`;
-    const url = `${API_CONFIG.BASE_URL}/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
-
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        range,
-        majorDimension: "ROWS",
-        values: [[value]]
-      })
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`HP update failed (${response.status}): ${text}`);
-    }
-
-    return response.json();
-  }
-
-  async _promptUpdateStat(label, labels, cacheKey, options = {}) {
-    try {
-      const now = Date.now();
-      const cooldownMs = 10000;
-      const lastKey = `${cacheKey}EditAt`;
-      if (this[lastKey] && (now - this[lastKey]) < cooldownMs) {
-        const remaining = Math.ceil((cooldownMs - (now - this[lastKey])) / 1000);
-        ui.notifications.warn(`Please wait ${remaining}s before editing ${label} again.`);
-        return;
-      }
-
-      const cells = await this._getStatCells(labels, cacheKey);
-      if (!cells) throw new Error(`${label} cells not found.`);
-
-      const current = await this._getStatValues(labels, cacheKey);
-      const currentValue = current?.current ?? "";
-
-      const content = `
-        <form class="sheexcel-hp-edit" style="display:grid;grid-template-columns:1fr;gap:8px;">
-          <label>Current ${label}</label>
-          <input name="value" type="text" placeholder="e.g., 12 or +2 or -1" value="" />
-        </form>
-      `;
-
-      new Dialog({
-        title: `Update ${label}`,
-        content,
-        buttons: {
-          update: {
-            label: "Update",
-            callback: async (html) => {
-              const raw = String(html.find("input[name='value']").val() || "").trim();
-              if (!raw) return;
-
-              let nextValue = null;
-              if (/^[+-]\s*\d+(\.\d+)?$/.test(raw)) {
-                const delta = Number(raw.replace(/\s+/g, ""));
-                const base = Number(currentValue);
-                if (!Number.isFinite(delta) || !Number.isFinite(base)) {
-                  ui.notifications.error("Invalid adjustment value.");
-                  return;
-                }
-                nextValue = base + delta;
-              } else if (/^\d+(\.\d+)?$/.test(raw)) {
-                nextValue = Number(raw);
-              } else {
-                ui.notifications.error("Enter a number or a +/- adjustment.");
-                return;
-              }
-
-              const maxValue = Number(current?.max);
-              const shouldClamp = options?.clampMax === true;
-              if (shouldClamp && Number.isFinite(maxValue)) {
-                nextValue = Math.min(nextValue, maxValue);
-              }
-
-              await this._updateSheetValue(cells.sheetId, cells.sheetName, cells.totalCell, nextValue);
-              await this._updateOrbs(this.element);
-              ui.notifications.info(`${label} updated.`);
-              this[lastKey] = Date.now();
-            }
-          },
-          cancel: { label: "Cancel" }
-        },
-        default: "update"
-      }).render(true);
-    } catch (error) {
-      ui.notifications.error(error.message || `Update ${label} failed.`);
-    }
   }
 
   async _updateStatOrb(html, options) {
@@ -1189,6 +1004,120 @@ export class SheexcelActorSheet extends ActorSheet {
     }
 
     return spells;
+  }
+
+  _extractAbilityBlocks(scan) {
+    console.log("Sheexcel | Abilities parser start", {
+      startRow: scan.startRow,
+      endRow: scan.endRow,
+      startColumn: scan.startColumn,
+      endColumn: scan.endColumn
+    });
+
+    const getRowCells = (row) => {
+      const cells = [];
+      for (let col = scan.startColumn; col <= scan.endColumn; col++) {
+        const value = scan.readCell(row, col);
+        if (!value) continue;
+        cells.push({ col, value: String(value).trim() });
+      }
+      return cells;
+    };
+
+    const isHeaderRow = (cells) => {
+      if (!cells.length) return false;
+      const first = cells[0];
+      const second = cells[1];
+      if (!first || !second) return false;
+      const codeLike = /^[A-Z]{2,4}$/.test(first.value);
+      const hasTitle = /[A-Za-z]/.test(second.value);
+      return codeLike && hasTitle;
+    };
+
+    const headers = [];
+    for (let row = scan.startRow; row <= scan.endRow; row++) {
+      const cells = getRowCells(row);
+      if (!isHeaderRow(cells)) continue;
+      headers.push({ row, cells });
+    }
+
+    console.log("Sheexcel | Abilities header detection", {
+      count: headers.length,
+      sample: headers.slice(0, 20).map(h => ({
+        row: h.row,
+        code: h.cells[0]?.value || "",
+        titleParts: h.cells.slice(1).map(c => c.value)
+      }))
+    });
+
+    const abilities = [];
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i];
+      const nextHeaderRow = headers[i + 1]?.row || (scan.endRow + 1);
+      const code = header.cells[0]?.value || "";
+      const titleCells = header.cells.slice(1);
+      const abilityName = titleCells.map(c => c.value).join(" ").replace(/\s+/g, " ").trim();
+      if (!abilityName) continue;
+
+      const titleStartCol = titleCells[0]?.col || header.cells[0].col;
+      const titleEndCol = titleCells[titleCells.length - 1]?.col || titleStartCol;
+      const abilityNameCell = titleStartCol === titleEndCol
+        ? this._buildSingleCell(titleStartCol, header.row)
+        : this._buildAbsoluteRange(titleStartCol, titleEndCol, header.row);
+
+      const contentLines = [];
+      const contentStartRow = header.row + 1;
+      const contentEndRow = nextHeaderRow - 1;
+
+      for (let row = contentStartRow; row <= contentEndRow; row++) {
+        const cells = getRowCells(row);
+        if (!cells.length) continue;
+
+        // Defensive: skip accidental header-like rows inside block.
+        if (isHeaderRow(cells)) break;
+
+        const minCol = cells[0].col;
+        const indentLevel = Math.max(0, minCol - titleStartCol);
+        const indent = "  ".repeat(Math.min(indentLevel, 6));
+        const line = cells.map(c => c.value).join(" ").replace(/\s+/g, " ").trim();
+        if (!line) continue;
+        contentLines.push(`${indent}${line}`);
+      }
+
+      const effectText = contentLines.join("\n").trim();
+      const ability = {
+        id: randomID(),
+        type: "abilities",
+        sheet: "",
+        keyword: abilityName,
+        abilityName,
+        abilityNameCell,
+        category: code,
+        cost: "",
+        trigger: "",
+        target: "",
+        range: "",
+        duration: "",
+        description: "",
+        effect: effectText,
+        notes: "",
+        value: "",
+        subchecks: []
+      };
+
+      abilities.push(ability);
+    }
+
+    console.log("Sheexcel | Abilities parser end", {
+      parsedAbilities: abilities.length,
+      sample: abilities.slice(0, 10).map(a => ({
+        name: a.abilityName,
+        category: a.category,
+        hasEffect: Boolean(a.effect)
+      }))
+    });
+
+    return abilities;
   }
 
   async _onBulkAddChecks(event) {
@@ -1773,6 +1702,84 @@ export class SheexcelActorSheet extends ActorSheet {
     return match ? match[0].trim() : "";
   }
 
+  _extractDamageTypeFromText(text) {
+    const source = String(text || "").toLowerCase();
+    if (!source) return "";
+
+    const knownTypes = [
+      ["acid", "Acid"],
+      ["blunt", "Bludgeoning"],
+      ["bludgeoning", "Bludgeoning"],
+      ["cold", "Cold"],
+      ["fire", "Fire"],
+      ["force", "Force"],
+      ["lightning", "Lightning"],
+      ["necrotic", "Necrotic"],
+      ["pierce", "Piercing"],
+      ["piercing", "Piercing"],
+      ["poison", "Poison"],
+      ["psychic", "Psychic"],
+      ["radiant", "Radiant"],
+      ["slash", "Slashing"],
+      ["slashing", "Slashing"],
+      ["thunder", "Thunder"],
+      ["vitality", "Vitality"]
+    ];
+
+    const found = [];
+    const seen = new Set();
+    for (const [token, label] of knownTypes) {
+      if (new RegExp(`\\b${token}\\b`, "i").test(source)) {
+        if (seen.has(label)) continue;
+        seen.add(label);
+        found.push(label);
+      }
+    }
+    if (found.length) return found.join(" / ");
+
+    return "";
+  }
+
+  _extractDamagePartsFromText(text, mods = null) {
+    const raw = String(text || "").trim();
+    if (!raw) return [];
+
+    const segments = raw
+      .split(/\band\b|\//i)
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    const parts = [];
+    const seen = new Set();
+    for (const segment of segments) {
+      const formula = mods
+        ? (this._parseDamageFormulaFromText(segment, mods) || this._parseRawDamageFormula(segment))
+        : this._parseRawDamageFormula(segment);
+      if (!formula) continue;
+
+      const type = this._extractDamageTypeFromText(segment);
+      const key = `${formula}::${(type||"").toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      parts.push({ formula, type, detail: segment });
+    }
+
+    if (!parts.length) {
+      const fallbackFormula = mods
+        ? (this._parseDamageFormulaFromText(raw, mods) || this._parseRawDamageFormula(raw))
+        : this._parseRawDamageFormula(raw);
+      if (fallbackFormula) {
+        parts.push({
+          formula: fallbackFormula,
+          type: this._extractDamageTypeFromText(raw),
+          detail: raw
+        });
+      }
+    }
+
+    return parts;
+  }
+
   _parseRawNumber(text) {
     const match = String(text || "").match(/[-+]?\d+/);
     return match ? Number(match[0]) : null;
@@ -1802,6 +1809,31 @@ export class SheexcelActorSheet extends ActorSheet {
         return { value: raw, col: c };
       }
       return null;
+    };
+
+    const collectValuesRight = (row, col) => {
+      const values = [];
+      let lastCol = col;
+      let started = false;
+      let emptyRun = 0;
+      const maxGapAfterStart = 1;
+
+      for (let c = col + 1; c <= scan.endColumn; c++) {
+        const raw = String(scan.readCell(row, c) || "").trim();
+        if (!raw) {
+          if (started) {
+            emptyRun += 1;
+            if (emptyRun > maxGapAfterStart) break;
+          }
+          continue;
+        }
+
+        started = true;
+        emptyRun = 0;
+        values.push(raw);
+        lastCol = c;
+      }
+      return { values, lastCol };
     };
 
     const findHeaderAbove = (startRow, col) => {
@@ -1853,6 +1885,7 @@ export class SheexcelActorSheet extends ActorSheet {
         let accuracy = "";
         let critical = "";
         let damage = "";
+        let damageRows = [];
         let special = "";
         let lastLabel = "";
 
@@ -1873,15 +1906,23 @@ export class SheexcelActorSheet extends ActorSheet {
             if (value.col > maxValueCol) maxValueCol = value.col;
             if (label === "accuracy") accuracy = value.value;
             if (label === "critical") critical = value.value;
-            if (label === "damage") damage = value.value;
+            if (label === "damage") {
+              const rowValues = collectValuesRight(r, col);
+              if (rowValues.lastCol > maxValueCol) maxValueCol = rowValues.lastCol;
+              damage = rowValues.values[0] || value.value;
+              damageRows = rowValues.values.length ? [rowValues.values.join(" ")] : [];
+            }
             if (label === "special") special = value.value;
             continue;
           }
 
           if (!label && lastLabel === "damage") {
-            const value = String(scan.readCell(r, valueCol) || "").trim();
+            const rowValues = collectValuesRight(r, col);
+            const value = rowValues.values[0] || "";
+            if (rowValues.lastCol > maxValueCol) maxValueCol = rowValues.lastCol;
             if (value) {
               damage = damage ? `${damage} / ${value}` : value;
+              damageRows.push(rowValues.values.join(" "));
             }
           }
         }
@@ -1900,6 +1941,7 @@ export class SheexcelActorSheet extends ActorSheet {
           accuracy,
           critical,
           damage,
+          damageRows,
           special,
           startRow: blockStartRow,
           endRow,
@@ -1949,9 +1991,11 @@ export class SheexcelActorSheet extends ActorSheet {
       if (!/thrust/i.test(abilityLabel)) {
         continue;
       }
-      const damageFormula = this._parseDamageFormulaFromText(line, mods);
-      if (!damageFormula) continue;
-      const detail = this._extractDamageDetailFromText(line);
+      const damageParts = this._extractDamagePartsFromText(line, mods);
+      if (!damageParts.length) continue;
+      const damageFormula = damageParts[0].formula;
+      const detail = damageParts.map(part => part.detail).join(" / ");
+      const damageType = damageParts.map(part => part.type).filter(Boolean).join(" / ");
       const accAdj = pendingAccAdj || 0;
 
       const baseTotal = Number.isFinite(accuracy?.total) ? accuracy.total : 0;
@@ -1981,6 +2025,8 @@ export class SheexcelActorSheet extends ActorSheet {
         keyword: gear.gearName,
         attackName,
         attackDetail: detail,
+        damageType,
+        damageParts,
         value: totalValue,
         accuracyBase: baseValue,
         accuracyAbility: abilityKey,
@@ -2048,8 +2094,13 @@ export class SheexcelActorSheet extends ActorSheet {
         .map(attack => {
           const accuracyValue = this._parseRawNumber(attack.accuracy) ?? 0;
           const critRange = this._parseRawNumber(attack.critical) ?? 20;
-          const damageFormula = this._parseRawDamageFormula(attack.damage);
           const detail = attack.damage ? String(attack.damage).trim() : "";
+          const damageSource = Array.isArray(attack.damageRows) && attack.damageRows.length
+            ? attack.damageRows.join(" / ")
+            : `${detail} ${attack.special || ""}`;
+          const damageParts = this._extractDamagePartsFromText(damageSource);
+          const damageFormula = damageParts[0]?.formula || this._parseRawDamageFormula(attack.damage);
+          const damageType = damageParts.map(part => part.type).filter(Boolean).join(" / ");
           const accuracyBreakdown = this._formatSignedNumber(accuracyValue);
           const comment = collectNotesForBlock(attack);
           return {
@@ -2059,6 +2110,8 @@ export class SheexcelActorSheet extends ActorSheet {
             keyword: attack.attackName,
             attackName: attack.attackName,
             attackDetail: detail,
+            damageType,
+            damageParts,
             value: accuracyValue,
             accuracyBase: accuracyValue,
             accuracyAbility: "",
@@ -2600,15 +2653,279 @@ export class SheexcelActorSheet extends ActorSheet {
     }
   }
 
+  async _onUpdateAbilitiesFromSheet(event) {
+    event.preventDefault();
+
+    try {
+      console.log("Sheexcel | Update abilities start");
+      this._invalidateApiCache();
+      const metadata = await this._fetchSheetMetadata();
+      const sheets = Array.isArray(metadata.sheets) ? metadata.sheets : [];
+      if (!sheets.length) throw new Error("No sheet metadata found.");
+
+      console.log("Sheexcel | Ability update metadata sheets", sheets.map(s => s?.properties?.title || ""));
+
+      const abilitySheet = sheets.find(s => /^abilities?$/i.test(s.properties?.title || ""))
+        || sheets.find(s => /abilities?|ability/i.test(s.properties?.title || ""))
+        || sheets[0];
+      const sheetName = abilitySheet?.properties?.title;
+      if (!sheetName) throw new Error("Could not determine sheet name for abilities.");
+
+      const rowCount = Math.max(2, Number(abilitySheet.properties?.gridProperties?.rowCount) || 300);
+      const columnCount = Math.max(2, Number(abilitySheet.properties?.gridProperties?.columnCount) || 12);
+      const bottomRight = `${this._columnNumberToLetters(columnCount)}${rowCount}`;
+
+      console.log("Sheexcel | Ability update target", {
+        sheetName,
+        rowCount,
+        columnCount,
+        range: `A1:${bottomRight}`
+      });
+
+      const scan = await this._scanArea(sheetName, "A1", bottomRight);
+      const previewRows = [];
+      for (let row = scan.startRow; row <= Math.min(scan.endRow, scan.startRow + 7); row++) {
+        const cells = [];
+        for (let col = scan.startColumn; col <= Math.min(scan.endColumn, scan.startColumn + 5); col++) {
+          const v = scan.readCell(row, col);
+          if (v) cells.push(v);
+        }
+        previewRows.push({ row, cells });
+      }
+      console.log("Sheexcel | Ability scan preview", previewRows);
+
+      const profile = {
+        totalRows: scan.endRow - scan.startRow + 1,
+        rowsWithValues: 0,
+        colUsage: {},
+        firstNonEmptyColUsage: {},
+        headerCodeTitleRows: []
+      };
+      for (let row = scan.startRow; row <= scan.endRow; row++) {
+        const rowCells = [];
+        for (let col = scan.startColumn; col <= scan.endColumn; col++) {
+          const value = scan.readCell(row, col);
+          if (!value) continue;
+          rowCells.push({ col, value: String(value).trim() });
+          profile.colUsage[col] = (profile.colUsage[col] || 0) + 1;
+        }
+        if (!rowCells.length) continue;
+
+        profile.rowsWithValues += 1;
+        const firstCol = rowCells[0].col;
+        profile.firstNonEmptyColUsage[firstCol] = (profile.firstNonEmptyColUsage[firstCol] || 0) + 1;
+
+        const first = rowCells[0];
+        const second = rowCells[1];
+        if (/^[A-Z]{2,4}$/.test(first.value) && second?.value && /[A-Za-z]/.test(second.value)) {
+          if (profile.headerCodeTitleRows.length < 30) {
+            profile.headerCodeTitleRows.push({ row, code: first.value, title: second.value });
+          }
+        }
+      }
+      console.log("Sheexcel | Ability scan profile", profile);
+
+      const abilities = this._extractAbilityBlocks(scan);
+      if (!abilities.length) throw new Error(`No abilities detected in sheet \"${sheetName}\".`);
+
+      console.log("Sheexcel | Ability update parsed count", {
+        count: abilities.length,
+        names: abilities.slice(0, 10).map(a => a.abilityName || a.keyword)
+      });
+
+      const refs = foundry.utils.deepClone(this.actor.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || []);
+      const existingAbilityCount = refs.filter(r => r?.type === "abilities").length;
+      await this.actor.setFlag(MODULE_NAME, FLAGS.BULK_ADD_BACKUP, refs);
+
+      const nonAbilities = refs.filter(r => r?.type !== "abilities");
+      const additions = abilities.map(ability => ({ ...ability, sheet: sheetName }));
+
+      await this.actor.setFlag(MODULE_NAME, FLAGS.CELL_REFERENCES, [...nonAbilities, ...additions]);
+      ui.notifications.info(`Updated abilities from ${sheetName}: ${existingAbilityCount} → ${additions.length}. Use Undo Bulk Add to revert.`);
+      console.log("Sheexcel | Update abilities success", {
+        sheetName,
+        previous: existingAbilityCount,
+        next: additions.length
+      });
+      this.render(false);
+    } catch (error) {
+      console.error("Sheexcel | Update abilities failed", error);
+      ui.notifications.error(`Update abilities failed: ${error.message}`);
+    }
+  }
+
+  _extractRestEntries(scan) {
+    const rows = [];
+
+    for (let row = scan.startRow; row <= scan.endRow; row++) {
+      const cells = [];
+      for (let col = scan.startColumn; col <= scan.endColumn; col++) {
+        const text = String(scan.readCell(row, col) || "").trim();
+        if (!text) continue;
+        cells.push({ col, text });
+      }
+
+      if (!cells.length) continue;
+      rows.push({ row, cells, firstCol: cells[0].col, text: cells.map((cell) => cell.text).join(" ") });
+    }
+
+    if (!rows.length) return [];
+
+    const indentationCols = Array.from(new Set(rows.map((row) => row.firstCol))).sort((a, b) => a - b);
+    const indentationRank = new Map(indentationCols.map((col, index) => [col, index]));
+    const baseCol = indentationCols[0];
+    const entries = [];
+    let currentEntry = null;
+
+    rows.forEach((rowData) => {
+      const level = indentationRank.get(rowData.firstCol) ?? 0;
+
+      if (level === 0 || rowData.firstCol === baseCol) {
+        currentEntry = {
+          id: randomID(),
+          section: "Rest",
+          title: rowData.text,
+          summary: "",
+          details: [],
+          row: rowData.row
+        };
+        entries.push(currentEntry);
+        return;
+      }
+
+      if (!currentEntry) {
+        currentEntry = {
+          id: randomID(),
+          section: "Rest",
+          title: rowData.text,
+          summary: "",
+          details: [],
+          row: rowData.row
+        };
+        entries.push(currentEntry);
+        return;
+      }
+
+      currentEntry.details.push({
+        text: rowData.text,
+        level: Math.max(1, level)
+      });
+    });
+
+    return entries;
+  }
+
+  async _onUpdateRestFromSheet(event) {
+    event.preventDefault();
+
+    try {
+      this._invalidateApiCache();
+      const metadata = await this._fetchSheetMetadata();
+      const sheets = Array.isArray(metadata.sheets) ? metadata.sheets : [];
+      if (!sheets.length) throw new Error("No sheet metadata found.");
+
+      const restSheet = sheets.find((sheet) => /^rest$/i.test(sheet.properties?.title || ""))
+        || sheets.find((sheet) => /rest/i.test(sheet.properties?.title || ""));
+      const sheetName = restSheet?.properties?.title;
+      if (!sheetName) throw new Error("Could not find a sheet named Rest.");
+
+      const rowCount = Math.max(2, Number(restSheet.properties?.gridProperties?.rowCount) || 300);
+      const columnCount = Math.max(2, Number(restSheet.properties?.gridProperties?.columnCount) || 12);
+      const bottomRight = `${this._columnNumberToLetters(columnCount)}${rowCount}`;
+
+      const scan = await this._scanArea(sheetName, "A1", bottomRight);
+      const entries = this._extractRestEntries(scan);
+      if (!entries.length) throw new Error(`No rest entries detected in sheet \"${sheetName}\".`);
+
+      await this.actor.setFlag(MODULE_NAME, FLAGS.REST_ENTRIES, entries);
+      ui.notifications.info(`Updated rest entries from ${sheetName}: ${entries.length} loaded.`);
+      this.render(false);
+    } catch (error) {
+      ui.notifications.error(`Update rest failed: ${error.message}`);
+    }
+  }
+
+  async _onPostRestLineToChat(entryIndex, detailIndex = null, lineType = "detail") {
+    const entries = this.actor.getFlag(MODULE_NAME, FLAGS.REST_ENTRIES) || [];
+    const entry = entries[entryIndex];
+    if (!entry) return;
+
+    const title = String(entry.title || "Rest").trim() || "Rest";
+    const escapedTitle = foundry.utils.escapeHTML(title);
+
+    if (lineType === "card") {
+      const summary = String(entry.summary || "").trim();
+      const details = Array.isArray(entry.details) ? entry.details : [];
+      const summaryHtml = summary
+        ? `<div class="sheexcel-rest-summary">${enrichTextWithInlineRolls(summary, { actorId: this.actor?.id || "", contextLabel: title })}</div>`
+        : "";
+      const detailHtml = details
+        .map((detail) => {
+          const detailText = typeof detail === "string" ? detail.trim() : String(detail?.text || "").trim();
+          if (!detailText) return "";
+          const level = typeof detail === "string" ? 1 : Math.max(1, Number(detail?.level) || 1);
+          return `<div class="sheexcel-rest-detail-line sheexcel-rest-detail-level-${level}">${enrichTextWithInlineRolls(detailText, { actorId: this.actor?.id || "", contextLabel: title })}</div>`;
+        })
+        .filter(Boolean)
+        .join("");
+
+      if (!summaryHtml && !detailHtml) return;
+
+      const content = `
+        <div class="sheexcel-spell-chat sheexcel-rest-chat">
+          <div class="sheexcel-spell-chat-sub">${escapedTitle}</div>
+          <div class="sheexcel-spell-chat-sections">
+            ${summaryHtml}
+            ${detailHtml ? `<div class="sheexcel-rest-details">${detailHtml}</div>` : ""}
+          </div>
+        </div>
+      `;
+
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+        content
+      });
+      return;
+    }
+
+    let lineText = "";
+    if (lineType === "summary") {
+      lineText = String(entry.summary || "").trim();
+    } else {
+      const detail = Array.isArray(entry.details) ? entry.details[detailIndex] : null;
+      if (typeof detail === "string") {
+        lineText = detail.trim();
+      } else {
+        lineText = String(detail?.text || "").trim();
+      }
+    }
+
+    if (!lineText) return;
+
+    const content = `
+      <div class="sheexcel-spell-chat sheexcel-rest-chat">
+        <div class="sheexcel-spell-chat-sub">${escapedTitle}</div>
+        <div class="sheexcel-spell-chat-sections">${enrichTextWithInlineRolls(lineText, { actorId: this.actor?.id || "", contextLabel: title })}</div>
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+      content
+    });
+  }
+
   async _onUpdateAllFromSheet(event) {
     event.preventDefault();
     const noopEvent = { preventDefault() {} };
 
     await this._onUpdateSkillsFromSheet(noopEvent);
+    await this._onUpdateAbilitiesFromSheet(noopEvent);
     await this._onUpdateSavesFromSheet(noopEvent);
     await this._onUpdateAttacksFromSheet(noopEvent);
     await this._onUpdateSpellsFromSheet(noopEvent);
     await this._onUpdateGearsFromSheet(noopEvent);
+    await this._onUpdateRestFromSheet(noopEvent);
 
     ui.notifications.info("Update all complete.");
   }
@@ -2646,10 +2963,7 @@ export class SheexcelActorSheet extends ActorSheet {
     if (!ref || ref.type !== "spells") return;
 
     const toLines = (value) => String(value || "")
-      .split("\n")
-      .map(line => line.trim())
-      .filter(Boolean)
-      .join("<br>");
+      .trim();
 
     const name = ref.spellName || ref.keyword || "Spell";
     const header = ref.circle ? `Circle ${ref.circle}` : "";
@@ -2667,9 +2981,9 @@ export class SheexcelActorSheet extends ActorSheet {
     ].filter(Boolean).join("");
 
     const sections = [
-      ref.description ? `<div><strong>Description:</strong><br>${toLines(ref.description)}</div>` : "",
-      ref.effect ? `<div><strong>Effect:</strong><br>${toLines(ref.effect)}</div>` : "",
-      ref.empower ? `<div><strong>Empower:</strong><br>${toLines(ref.empower)}</div>` : ""
+      ref.description ? `<div><strong>Description:</strong><br>${enrichTextWithInlineRolls(toLines(ref.description), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : "",
+      ref.effect ? `<div><strong>Effect:</strong><br>${enrichTextWithInlineRolls(toLines(ref.effect), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : "",
+      ref.empower ? `<div><strong>Empower:</strong><br>${enrichTextWithInlineRolls(toLines(ref.empower), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : ""
     ].filter(Boolean).join("<br>");
 
     const content = `
@@ -2678,6 +2992,46 @@ export class SheexcelActorSheet extends ActorSheet {
         ${header ? `<div class="sheexcel-spell-chat-sub">${header}</div>` : ""}
         ${tags ? `<div class="sheexcel-spell-chat-tags">${tags}</div>` : ""}
         ${stats ? `<div class="sheexcel-spell-chat-stats">${stats}</div>` : ""}
+        ${sections ? `<div class="sheexcel-spell-chat-sections">${sections}</div>` : ""}
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+      content
+    });
+  }
+
+  async _onPostAbilityToChat(index) {
+    const refs = this.actor.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || [];
+    const ref = refs[index];
+    if (!ref || ref.type !== "abilities") return;
+
+    const toLines = (value) => String(value || "")
+      .trim();
+
+    const name = ref.abilityName || ref.keyword || "Ability";
+    const tags = [
+      ref.category ? `Category: ${ref.category}` : "",
+      ref.cost ? `Cost: ${ref.cost}` : "",
+      ref.target ? `Target: ${ref.target}` : "",
+      ref.range ? `Range: ${ref.range}` : "",
+      ref.duration ? `Duration: ${ref.duration}` : "",
+      ref.trigger ? `Trigger: ${ref.trigger}` : ""
+    ].filter(Boolean)
+      .map(t => `<span class="sheexcel-spell-chat-tag">${t}</span>`)
+      .join(" ");
+
+    const sections = [
+      ref.description ? `<div><strong>Description:</strong><br>${enrichTextWithInlineRolls(toLines(ref.description), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : "",
+      ref.effect ? `<div><strong>Effect:</strong><br>${enrichTextWithInlineRolls(toLines(ref.effect), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : "",
+      ref.notes ? `<div><strong>Notes:</strong><br>${enrichTextWithInlineRolls(toLines(ref.notes), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : ""
+    ].filter(Boolean).join("<br>");
+
+    const content = `
+      <div class="sheexcel-spell-chat sheexcel-ability-chat">
+        <div class="sheexcel-spell-chat-title">${name}</div>
+        ${tags ? `<div class="sheexcel-spell-chat-tags">${tags}</div>` : ""}
         ${sections ? `<div class="sheexcel-spell-chat-sections">${sections}</div>` : ""}
       </div>
     `;
@@ -2914,6 +3268,11 @@ export class SheexcelActorSheet extends ActorSheet {
     await this._clearReferencesByType("spells", "Spells");
   }
 
+  async _onClearAbilities(event) {
+    event.preventDefault();
+    await this._clearReferencesByType("abilities", "Abilities");
+  }
+
   async _onClearGears(event) {
     event.preventDefault();
     await this._clearReferencesByType("gears", "Gears");
@@ -3082,6 +3441,10 @@ export class SheexcelActorSheet extends ActorSheet {
     this.element.find(".sheexcel-sheet-tabs .item, .sheexcel-sidebar-tab").removeClass("active");
     this.element.find(`.sheexcel-sidebar-tab[data-tab="${tab}"]`).addClass("active");
     event.currentTarget.classList.add("active");
+
+    const form = this.element.find("form.sheexcel-sheet")[0];
+    const target = form || this.element[0];
+    if (target) target.dataset.activeTab = tab;
   }
 
   _onUpdateSheet(event) {

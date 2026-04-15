@@ -74,11 +74,12 @@ function computeTotal(roll) {
 // ——————————————————————————————————————————
 // 5) SEND THE CHAT MESSAGE  
 // ——————————————————————————————————————————
-async function postToChat(roll, preCrit, baseFormula, doubledFormula, isCrit, actor) {
+async function postToChat(roll, preCrit, baseFormula, doubledFormula, isCrit, actor, damageType = "") {
   const speaker = ChatMessage.getSpeaker({ actor });
+  const damageLabel = damageType ? `Damage (${damageType})` : "Damage";
   const flavor = isCrit
-    ? `<strong>🔪 Critical Damage</strong> (doubled): Rolled [${preCrit.join(", ")}] → Total ${roll.total}<br><em>Formula:</em> <code>${doubledFormula}</code>`
-    : `<strong>🔪 Damage</strong>: ${baseFormula} = ${roll.total}`;
+    ? `<strong>🔪 Critical ${damageLabel}</strong> (doubled): Rolled [${preCrit.join(", ")}] → Total ${roll.total}<br><em>Formula:</em> <code>${doubledFormula}</code>`
+    : `<strong>🔪 ${damageLabel}</strong>: ${baseFormula} = ${roll.total}`;
   await roll.toMessage({ speaker, flavor });
 }
 
@@ -140,11 +141,11 @@ function dropHighestDice(roll) {
  * Roll damage with advantage/disadvantage/normal
  * Usage: handleDamage({ ..., advantage: true }) or handleDamage({ ..., disadvantage: true })
  */
-export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage, dmgDisadvantage }) {
-  if (!dmgF) return;
+export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage, dmgDisadvantage, damageType = "", bonusRawOverride = undefined }) {
+  if (!dmgF) return false;
   // 6a) Bonus prompt
-  const bonusRaw = await promptBonus(keyword);
-  if (bonusRaw === null) return; // user cancelled
+  const bonusRaw = bonusRawOverride !== undefined ? bonusRawOverride : await promptBonus(keyword);
+  if (bonusRaw === null) return false; // user cancelled
 
   // 6b) Build & roll
   let baseFormula = buildFormula(dmgF, bonusRaw);
@@ -205,5 +206,6 @@ export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage,
   }
 
   // 6e) Post
-  await postToChat(dmgRoll, preCrit, baseFormula, doubledFormula, isCrit, sheet.actor);
+  await postToChat(dmgRoll, preCrit, baseFormula, doubledFormula, isCrit, sheet.actor, damageType);
+  return true;
 }

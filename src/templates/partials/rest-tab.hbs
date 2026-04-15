@@ -1,0 +1,63 @@
+<div class="sheexcel-main-subtab-content" data-tab="rest" style="display:none;">
+  <div class="sheexcel-rest-header">
+    <button type="button" class="sheexcel-update-rest-button">Update Rest</button>
+  </div>
+
+  {{#if restSheet.sections.length}}
+    {{#each restSheet.sections}}
+    <div class="sheexcel-rest-section">
+      <div class="sheexcel-rest-section-header">
+        <span class="sheexcel-rest-section-toggle-icon">▶</span>
+        {{this.label}} <span>({{this.entries.length}})</span>
+      </div>
+
+      <div class="sheexcel-rest-grid">
+        {{#each this.entries}}
+        <div class="sheexcel-rest-card collapsed" data-index="{{this.index}}">
+          <div class="sheexcel-rest-card-header">
+            <div class="sheexcel-rest-title">{{this.title}}</div>
+            <button type="button" class="sheexcel-rest-toggle" title="Expand">
+              <span class="sheexcel-rest-toggle-icon">▶</span>
+            </button>
+          </div>
+
+          {{#if this.postFullCard}}
+          <div class="sheexcel-rest-body sheexcel-rest-card-post" data-entry-index="{{this.index}}" data-line-type="card" role="button" tabindex="0">
+            {{#if this.summary}}
+            <div class="sheexcel-rest-summary">{{{this.summaryHtml}}}</div>
+            {{/if}}
+
+            {{#if this.details.length}}
+            <div class="sheexcel-rest-details">
+              {{#each this.details}}
+              <div class="sheexcel-rest-detail-line sheexcel-rest-detail-level-{{this.level}}">{{{this.html}}}</div>
+              {{/each}}
+            </div>
+            {{/if}}
+          </div>
+          {{else}}
+          <div class="sheexcel-rest-body">
+            {{#if this.summary}}
+            <div class="sheexcel-rest-line-post sheexcel-rest-summary" data-entry-index="{{this.index}}" data-line-type="summary" role="button" tabindex="0">{{{this.summaryHtml}}}</div>
+            {{/if}}
+
+            {{#if this.details.length}}
+            <div class="sheexcel-rest-details">
+              {{#each this.details}}
+              <div class="sheexcel-rest-line-post sheexcel-rest-detail-line sheexcel-rest-detail-level-{{this.level}}" data-entry-index="{{../this.index}}" data-detail-index="{{@index}}" data-line-type="detail" role="button" tabindex="0">{{{this.html}}}</div>
+              {{/each}}
+            </div>
+            {{/if}}
+          </div>
+          {{/if}}
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    {{/each}}
+  {{else}}
+    <div class="sheexcel-rest-empty">
+      <i>No rest entries loaded</i>
+    </div>
+  {{/if}}
+</div>
