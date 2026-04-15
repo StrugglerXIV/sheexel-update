@@ -4,11 +4,26 @@ function normalizeFormula(formula) {
   return String(formula || "").replace(/\s+/g, "").replace(/D/g, "d");
 }
 
+export function escapeHtml(value) {
+  const source = String(value ?? "");
+
+  if (typeof globalThis.Handlebars?.escapeExpression === "function") {
+    return globalThis.Handlebars.escapeExpression(source);
+  }
+
+  return source
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildInlineRollSpan(match, actorId = "", contextLabel = "") {
   const formula = normalizeFormula(match);
-  const actorAttr = actorId ? ` data-actor-id="${foundry.utils.escapeHTML(String(actorId))}"` : "";
-  const contextAttr = contextLabel ? ` data-context="${foundry.utils.escapeHTML(String(contextLabel))}"` : "";
-  return `<span class="sheexcel-inline-roll" data-formula="${foundry.utils.escapeHTML(formula)}"${actorAttr}${contextAttr} role="button" tabindex="0">${foundry.utils.escapeHTML(match)}</span>`;
+  const actorAttr = actorId ? ` data-actor-id="${escapeHtml(String(actorId))}"` : "";
+  const contextAttr = contextLabel ? ` data-context="${escapeHtml(String(contextLabel))}"` : "";
+  return `<span class="sheexcel-inline-roll" data-formula="${escapeHtml(formula)}"${actorAttr}${contextAttr} role="button" tabindex="0">${escapeHtml(match)}</span>`;
 }
 
 export function enrichTextWithInlineRolls(text, { actorId = "", allowHtml = false, contextLabel = "" } = {}) {
@@ -17,7 +32,7 @@ export function enrichTextWithInlineRolls(text, { actorId = "", allowHtml = fals
   const source = String(text);
   const prepared = allowHtml
     ? source
-    : foundry.utils.escapeHTML(source).replace(/\r?\n/g, "<br>");
+    : escapeHtml(source).replace(/\r?\n/g, "<br>");
 
   return prepared.replace(INLINE_ROLL_REGEX, (match) => buildInlineRollSpan(match, actorId, contextLabel));
 }
@@ -31,8 +46,8 @@ export async function triggerInlineRoll(formula, actor = null, contextLabel = ""
   await roll.toMessage({
     speaker: ChatMessage.getSpeaker({ actor }),
     flavor: contextLabel
-      ? `<strong>Roll</strong> ${foundry.utils.escapeHTML(normalized)} <span class="muted">from ${foundry.utils.escapeHTML(contextLabel)}</span>`
-      : `<strong>Roll</strong> ${foundry.utils.escapeHTML(normalized)}`
+      ? `<strong>Roll</strong> ${escapeHtml(normalized)} <span class="muted">from ${escapeHtml(contextLabel)}</span>`
+      : `<strong>Roll</strong> ${escapeHtml(normalized)}`
   });
 }
 

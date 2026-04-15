@@ -5,7 +5,7 @@ import { MODULE_NAME, FLAGS, SETTINGS, CSS_CLASSES, ERROR_MESSAGES, API_CONFIG }
 import { validateSheetUrl, validateCellReference, ValidationError } from "../helpers/validation.js";
 import { loadingManager } from "../helpers/loadingManager.js";
 import { apiCache } from "../helpers/apiCache.js";
-import { enrichTextWithInlineRolls } from "../helpers/inlineRolls.js";
+import { enrichTextWithInlineRolls, escapeHtml } from "../helpers/inlineRolls.js";
 
 
 // --- Main Sheet Class ---
@@ -2851,7 +2851,7 @@ export class SheexcelActorSheet extends ActorSheet {
     if (!entry) return;
 
     const title = String(entry.title || "Rest").trim() || "Rest";
-    const escapedTitle = foundry.utils.escapeHTML(title);
+    const escapedTitle = escapeHtml(title);
 
     if (lineType === "card") {
       const summary = String(entry.summary || "").trim();
