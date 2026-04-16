@@ -1,7 +1,174 @@
 // helpers/roller.js
 import { handleDamage } from "./dmgRoller.js";
-import { promptBonus } from "./situational.js";
 import { MODULE_NAME, FLAGS } from "./constants.js";
+import { wrapSheexcelChatFlavor } from "./chatStyling.js";
+
+// ——————————————————————————————————————————
+// ATTACK CARD — Post card to chat, buttons roll later
+// ——————————————————————————————————————————
+
+function promptAttackOptions(keyword) {
+  return new Promise(resolve => {
+    new Dialog({
+      title: `${keyword} — Attack`,
+      content: `
+        <div style="font-family:'Fontin','Georgia',serif;padding:4px 0;">
+          <div style="margin-bottom:8px;font-size:0.85em;color:#c7a86d;">Roll mode</div>
+          <div style="display:flex;gap:16px;margin-bottom:12px;">
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="atk-mode" value="adv"> ▲ Advantage</label>
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="atk-mode" value="norm" checked> = Normal</label>
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="atk-mode" value="dis"> ▼ Disadvantage</label>
+          </div>
+          <div style="margin-bottom:6px;font-size:0.85em;color:#c7a86d;">Situational bonus (optional)</div>
+          <input type="text" id="sheexcel-atk-bonus" value="" placeholder="e.g. +3, 1d4"
+            style="width:100%;background:#1a140f;border:1px solid #bfa05a;color:#c7a86d;
+                   padding:5px 9px;border-radius:4px;font-size:0.95em;box-sizing:border-box;"/>
+        </div>`,
+      buttons: {
+        roll: {
+          label: "Roll",
+          callback: html => {
+            const advMode = html.find("input[name='atk-mode']:checked").val() || "norm";
+            const bonus = html.find("#sheexcel-atk-bonus").val().trim();
+            resolve({ advMode, bonus: bonus || "" });
+          }
+        },
+        cancel: { label: "Cancel", callback: () => resolve(null) }
+      },
+      default: "roll"
+    }).render(true);
+  });
+}
+
+function promptCheckSaveOptions(keyword) {
+  return new Promise(resolve => {
+    new Dialog({
+      title: `${keyword} — Roll`,
+      content: `
+        <div style="font-family:'Fontin','Georgia',serif;padding:4px 0;">
+          <div style="margin-bottom:8px;font-size:0.85em;color:#c7a86d;">Roll mode</div>
+          <div style="display:flex;gap:16px;margin-bottom:12px;">
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="roll-mode" value="adv"> ▲ Advantage</label>
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="roll-mode" value="norm" checked> = Normal</label>
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="roll-mode" value="dis"> ▼ Disadvantage</label>
+          </div>
+          <div style="margin-bottom:6px;font-size:0.85em;color:#c7a86d;">Situational bonus (optional)</div>
+          <input type="text" id="sheexcel-roll-bonus" value="" placeholder="e.g. +3, 1d4"
+            style="width:100%;background:#1a140f;border:1px solid #bfa05a;color:#c7a86d;
+                   padding:5px 9px;border-radius:4px;font-size:0.95em;box-sizing:border-box;"/>
+        </div>`,
+      buttons: {
+        roll: {
+          label: "Roll",
+          callback: html => {
+            const advMode = html.find("input[name='roll-mode']:checked").val() || "norm";
+            const bonus = html.find("#sheexcel-roll-bonus").val().trim();
+            resolve({ advMode, bonus: bonus || "" });
+          }
+        },
+        cancel: { label: "Cancel", callback: () => resolve(null) }
+      },
+      default: "roll"
+    }).render(true);
+  });
+}
+
+export async function handleAttackCard(event, sheet) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const btn = $(event.currentTarget);
+  const mod = Number(btn.data("value")) || 0;
+  const crit = Number(btn.data("crit")) || 20;
+  const dmgF = btn.data("damage") != null ? String(btn.data("damage")).trim() : "";
+  const damageType = normalizeDamageType(btn.data("damageType"));
+  const refIndex = btn.data("refIndex");
+  const attackName = btn.closest(".attack-entry").find(".attack-name").text().trim();
+  const accuracyText = btn.closest(".attack-entry").find(".attack-accuracy").text().trim();
+
+  let damageParts = [];
+  const refIdx = Number(refIndex);
+  if (Number.isFinite(refIdx)) {
+    const refs = sheet.actor.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || [];
+    const ref = refs[refIdx];
+    if (Array.isArray(ref?.damageParts)) {
+      damageParts = ref.damageParts
+        .filter(part => part && String(part.formula || "").trim())
+        .map(part => ({
+          formula: String(part.formula || "").trim(),
+          type: normalizeDamageType(part.type)
+        }));
+    }
+  }
+
+  const keyword = attackName || "Attack";
+  const partsAttr = encodeURIComponent(JSON.stringify(damageParts));
+
+  const dmgDisplay = damageParts.length > 0
+    ? damageParts.map(p => `<span class="sheexcel-card-part"><code>${p.formula}</code>${p.type ? ` <em>${p.type}</em>` : ""}</span>`).join(" ")
+    : (dmgF ? `<code>${dmgF}</code>${damageType ? ` <em>${damageType}</em>` : ""}` : "<em>No damage</em>");
+
+  const content = `
+    <div class="sheexcel-attack-card"
+         data-mod="${mod}"
+         data-crit="${crit}"
+         data-dmg-f="${dmgF.replace(/"/g, "&quot;")}"
+         data-damage-type="${damageType.replace(/"/g, "&quot;")}"
+         data-damage-parts="${partsAttr}"
+         data-actor-id="${sheet.actor.id}"
+         data-ref-index="${refIdx}"
+         data-keyword="${keyword.replace(/"/g, "&quot;")}">
+      <div class="sheexcel-card-title">${keyword}</div>
+      <div class="sheexcel-card-row">${accuracyText} &nbsp;·&nbsp; Crit ≥ ${crit}</div>
+      <div class="sheexcel-card-row sheexcel-card-dmg-row">${dmgDisplay}</div>
+      <div class="sheexcel-card-btns">
+        <button type="button" class="sheexcel-attack-btn" data-action="attack">⚔ Attack</button>
+        <button type="button" class="sheexcel-attack-btn" data-action="damage">🔪 Damage</button>
+      </div>
+    </div>`;
+
+  await ChatMessage.create({
+    speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
+    content
+  });
+}
+
+export async function rollAttackFromCard({ mod, crit, keyword, sheet }) {
+  const opts = await promptAttackOptions(keyword);
+  if (!opts) return;
+  const { advMode, bonus: bonusRaw } = opts;
+
+  let bonusTerm = "";
+  if (bonusRaw) {
+    try { Roll.create(bonusRaw); } catch { return ui.notifications.error("Invalid bonus: " + bonusRaw); }
+    bonusTerm = (/^[+\-]/.test(bonusRaw) ? "" : "+") + bonusRaw;
+  }
+
+  let d20;
+  if (advMode === "adv") d20 = "2d20kh1";
+  else if (advMode === "dis") d20 = "2d20kl1";
+  else d20 = "1d20";
+
+  const formula = `${d20}${mod >= 0 ? "+" : ""}${mod}${bonusTerm}`;
+  const roll = new Roll(formula);
+  await roll.evaluate({ async: true });
+
+  const terms = roll.terms.filter(t => t.faces === 20);
+  const rolls = terms.flatMap(t => t.results.map(r => r.result));
+  const isCrit = Math.max(...rolls) >= crit;
+
+  await roll.toMessage({
+    speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
+    flavor: wrapSheexcelChatFlavor(
+      `<strong>${keyword}</strong> → ${roll.total}` +
+      (isCrit ? ` <span class="sheexcel-crit">[CRIT!]</span>` : ""),
+      "attack"
+    )
+  });
+
+  if (/^initiative$/i.test(keyword)) {
+    await applyInitiativeToCombat(sheet, roll.total);
+  }
+}
 
 function normalizeDamageType(value) {
   const raw = String(value || "").trim();
@@ -41,10 +208,9 @@ export async function handleRoll(event, sheet) {
   const mod = Number(btn.data("value")) || 0;
   const crit = Number(btn.data("crit")) || 20;
   const dmgF = btn.data("damage") != null ? String(btn.data("damage")).trim() : null;
+  const rollKind = String(btn.data("rollKind") || "").trim().toLowerCase();
   let damageType = normalizeDamageType(btn.data("damageType"));
   const refIndex = Number(btn.data("refIndex"));
-  const advMode = btn.closest(".sheexcel-sidebar").find("input[name='roll-mode']:checked").val();
-  const dmgAdvMode = btn.closest(".sheexcel-sidebar").find(".sheexcel-damage-mode").val();
   const attackName = $(btn).closest(".attack-entry").find(".attack-name").text();
 
   let damageParts = [];
@@ -84,6 +250,8 @@ export async function handleRoll(event, sheet) {
   if ($currentEntry.length) {
     // For checks/subchecks
     keyword = $currentEntry.find(".sheexcel-check-keyword").first().text().trim();
+  } else if (rollKind === "save") {
+    keyword = `${btn.text().trim()} Save`;
   } else {
     // For saves, attacks, spells: use button text
     keyword = btn.text().trim();
@@ -91,18 +259,16 @@ export async function handleRoll(event, sheet) {
 
   const totalMod = mod;
 
-  // Ask for the extra bonus formula
-  const bonusRaw = await promptBonus(keyword);
-  if (bonusRaw === null) return;
-  if (!bonusRaw) bonusRaw = "";
+  const rollOptions = await promptCheckSaveOptions(keyword);
+  if (!rollOptions) return;
+
+  const { advMode, bonus: bonusRaw = "" } = rollOptions;
 
   // Validate by trying to build a Roll
   let bonusTerm = "";
   try {
     if (bonusRaw) {
-      // If they typed “3”, “+2”, “1d4+1”, “2d6”, etc.
-      const testRoll = Roll.create(bonusRaw);
-      // If that succeeded, we'll prefix a "+" if needed:
+      Roll.create(bonusRaw);
       bonusTerm = (bonusRaw.match(/^[+\-]/) ? "" : "+") + bonusRaw;
     }
   } catch (err) {
@@ -115,7 +281,7 @@ export async function handleRoll(event, sheet) {
   else if (advMode === "dis") d20 = "2d20kl1";
   else d20 = "1d20";
 
-  const formula = `${d20}${totalMod >= 0 ? "+" : ""}${totalMod}${bonusTerm >= 0 ? "+" : ""}${bonusTerm}`;
+  const formula = `${d20}${totalMod >= 0 ? "+" : ""}${totalMod}${bonusTerm}`;
   const roll = new Roll(formula);
   await roll.evaluate({ async: true });
 
@@ -129,8 +295,11 @@ export async function handleRoll(event, sheet) {
   // Render the d20 roll
   await roll.toMessage({
     speaker: ChatMessage.getSpeaker({ actor: sheet.actor }),
-    flavor: `<strong>${keyword}</strong> → ${roll.total}${attackName ? ` from ${attackName}` : ""}` +
-      (isCrit ? ` <span class=\"sheexcel-crit\">[CRIT!]</span>` : "")
+    flavor: wrapSheexcelChatFlavor(
+      `<strong>${keyword}</strong> → ${roll.total}${attackName ? ` from ${attackName}` : ""}` +
+      (isCrit ? ` <span class=\"sheexcel-crit\">[CRIT!]</span>` : ""),
+      "check"
+    )
   });
 
   if (/^initiative$/i.test(keyword)) {
@@ -146,13 +315,11 @@ export async function handleRoll(event, sheet) {
         isCrit,
         keyword: part.type ? `Damage (${part.type})` : `Damage Part ${i + 1}`,
         damageType: part.type,
-        bonusRawOverride: i === 0 ? undefined : "",
-        sheet,
-        dmgAdvantage: dmgAdvMode === "advantage",
-        dmgDisadvantage: dmgAdvMode === "disadvantage"
+        bonusRawOverride: undefined,
+        sheet
       });
 
-      if (i === 0 && result === false) {
+      if (result === false) {
         return;
       }
     }
@@ -162,9 +329,7 @@ export async function handleRoll(event, sheet) {
       isCrit,      // boolean from your attack-roll result
       keyword: damageType ? `Damage (${damageType})` : "Damage",
       damageType,
-      sheet,       // your ItemSheet instance (so we can get sheet.actor)
-      dmgAdvantage: dmgAdvMode === "advantage",
-      dmgDisadvantage: dmgAdvMode === "disadvantage"
+      sheet        // your ItemSheet instance (so we can get sheet.actor)
     });
   }
 }

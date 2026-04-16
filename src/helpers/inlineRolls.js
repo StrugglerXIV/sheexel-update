@@ -1,4 +1,5 @@
 const INLINE_ROLL_REGEX = /\b\d+\s*[dD]\s*\d+(?:\s*[+\-]\s*\d+)?\b/g;
+import { wrapSheexcelChatFlavor } from "./chatStyling.js";
 
 function normalizeFormula(formula) {
   return String(formula || "").replace(/\s+/g, "").replace(/D/g, "d");
@@ -45,9 +46,12 @@ export async function triggerInlineRoll(formula, actor = null, contextLabel = ""
   await roll.evaluate({ async: true });
   await roll.toMessage({
     speaker: ChatMessage.getSpeaker({ actor }),
-    flavor: contextLabel
-      ? `<strong>Roll</strong> ${escapeHtml(normalized)} <span class="muted">from ${escapeHtml(contextLabel)}</span>`
-      : `<strong>Roll</strong> ${escapeHtml(normalized)}`
+    flavor: wrapSheexcelChatFlavor(
+      contextLabel
+        ? `<strong>Roll</strong> ${escapeHtml(normalized)} <span class="muted">from ${escapeHtml(contextLabel)}</span>`
+        : `<strong>Roll</strong> ${escapeHtml(normalized)}`,
+      "inline"
+    )
   });
 }
 

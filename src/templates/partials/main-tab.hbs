@@ -1,33 +1,6 @@
 <div class="sheexcel-sidebar-tab tab main active" data-tab="main">
   <div class="sheexcel-main-subtabs">
 
-    <!-- ▷ Roll Mode Selector -->
-    <div class="sheexcel-roll-mode-section">
-      <label class="sheexcel-section-label">
-        🎲 Roll Mode
-      </label>
-      <div class="sheexcel-roll-mode">
-        <label class="sheexcel-radio-option">
-          <input type="radio" name="roll-mode" value="adv">
-          <span class="sheexcel-radio-label">
-            ▲ Advantage
-          </span>
-        </label>
-        <label class="sheexcel-radio-option">
-          <input type="radio" name="roll-mode" value="norm" checked>
-          <span class="sheexcel-radio-label">
-            = Normal
-          </span>
-        </label>
-        <label class="sheexcel-radio-option">
-          <input type="radio" name="roll-mode" value="dis">
-          <span class="sheexcel-radio-label">
-            ▼ Disadvantage
-          </span>
-        </label>
-      </div>
-    </div>
-
     <!-- ▷ Subtab Navigation -->
     <nav class="sheexcel-main-subtab-nav tabs" data-group="secondary">
       <a class="item active" data-tab="checks">Checks</a>
@@ -178,7 +151,7 @@
       </div>
       {{#each groupedReferences.saves}}
       <div class="save-button-margin">
-        <button type="button" class="sheexcel-roll" data-value="{{this.value}}">
+        <button type="button" class="sheexcel-roll" data-value="{{this.value}}" data-roll-kind="save">
           {{this.keyword}}
         </button>
         <span class="sheexcel-save-value">{{this.value}}</span>
@@ -205,18 +178,13 @@
           <div class="attack-comment">{{this.comment}}</div>
           {{/if}}
           <div class="attack-details">
-            <select id="damage-mode-{{@index}}" class="sheexcel-damage-mode" data-index="{{@index}}" aria-label="Damage mode">
-              <option value="normal">Damage: Normal</option>
-              <option value="advantage">Damage: Advantage</option>
-              <option value="disadvantage">Damage: Disadvantage</option>
-            </select>
             <div class="attack-accuracy">
               Accuracy: {{this.accuracyBreakdown}}
             </div>
             <div class="attack-roll-row">
-              <button type="button" class="sheexcel-roll" data-value="{{this.value}}" data-crit="{{this.critRange}}"
+              <button type="button" class="sheexcel-roll sheexcel-attack-card-trigger" data-value="{{this.value}}" data-crit="{{this.critRange}}"
                 data-damage="{{this.damage}}" data-damage-type="{{this.damageType}}" data-ref-index="{{this.index}}">
-                Roll
+                ROLL
               </button>
               <span class="attack-mod">{{this.value}}</span>
             </div>

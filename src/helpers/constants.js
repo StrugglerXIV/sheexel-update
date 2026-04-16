@@ -15,12 +15,16 @@ export const FLAGS = {
   STATS_CACHE: "statsCache",
   HIDE_MENU: "hideMenu",
   ZOOM_LEVEL: "zoomLevel",
-  SIDEBAR_COLLAPSED: "sidebarCollapsed"
+  SIDEBAR_COLLAPSED: "sidebarCollapsed",
+  ORB_MAX_HP: "orbMaxHp",
+  ORB_MAX_VIT: "orbMaxVit",
+  ORB_CURRENT_HP: "orbCurrentHp",
+  ORB_CURRENT_VIT: "orbCurrentVit",
+  ORB_FRAME_IMAGE: "orbFrameImage"
 };
 
 export const SETTINGS = {
   GOOGLE_API_KEY: "googleApiKey",
-  ROLL_MODE: "rollMode", 
   DAMAGE_MODES: "damageModes",
   API_CACHE: "apiCache"
 };

@@ -1,9 +1,9 @@
 import { importJsonHandler, exportJsonHandler } from "./importer.js";
-import { handleRoll } from "./roller.js";
+import { handleRoll, handleAttackCard } from "./roller.js";
 import { onSearch } from "./mainSearch.js";
 import { nestCheck, moveCheckToRoot, reorderCheck } from './dragDrop.js';
 import { onSaveReferences } from "./buttons/saveButton.js";
-import { CSS_CLASSES, SETTINGS } from "./constants.js";
+import { MODULE_NAME, FLAGS, CSS_CLASSES, SETTINGS } from "./constants.js";
 import { loadingManager } from "./loadingManager.js";
 import { handleInlineRollInteraction } from "./inlineRolls.js";
 
@@ -433,6 +433,7 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         ev.preventDefault();
         sheet._onUpdateAttacksFromSheet(ev);
     });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-attack-card-trigger", e => handleAttackCard(e, sheet));
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-roll", e => handleRoll(e, sheet));
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-update-spells-button", (ev) => {
         ev.preventDefault();
@@ -610,49 +611,9 @@ if (!targetElement || !targetElement.dataset?.checkId) {
     html.find(".sheexcel-main-subtab-nav a.item.active").click();
     html.on("change", "select.sheexcel-reference-input[data-type='refType']", sheet._onRefTypeChange.bind(sheet));
 
-    // Sidebar state, roll mode, damage mode restoration
+    // Sidebar state restoration
     const c = sheet.actor.getFlag("sheexcel_updated", "sidebarCollapsed");
     html.find('.sheexcel-sidebar').toggleClass('collapsed', !!c);
-    
-    // Restore roll mode from settings with error handling
-    try {
-        const saved = game.settings.get("sheexcel", SETTINGS.ROLL_MODE) || "norm";
-        html.find(`input[name="roll-mode"][value="${saved}"]`).prop("checked", true);
-    } catch (error) {
-        console.warn("❌ Sheexcel | Failed to restore roll mode:", error);
-    }
-    
-    html.find('input[name="roll-mode"]').on('change', (event) => {
-        try {
-            game.settings.set("sheexcel", SETTINGS.ROLL_MODE, event.target.value);
-        } catch (error) {
-            console.error("❌ Sheexcel | Failed to save roll mode:", error);
-        }
-    });
-    
-    // Damage mode handling with error recovery
-    try {
-        const savedModes = game.settings.get("sheexcel", SETTINGS.DAMAGE_MODES) || {};
-        html.find('.sheexcel-damage-mode').each(function () {
-            const idx = $(this).data('index');
-            const mode = savedModes[idx] || "normal";
-            $(this).val(mode);
-        });
-    } catch (error) {
-        console.warn("❌ Sheexcel | Failed to restore damage modes:", error);
-    }
-    
-    html.find('.sheexcel-damage-mode').on('change', function (event) {
-        try {
-            const idx = $(this).data('index');
-            const value = $(this).val();
-            const modes = game.settings.get("sheexcel", SETTINGS.DAMAGE_MODES) || {};
-            modes[idx] = value;
-            game.settings.set("sheexcel", SETTINGS.DAMAGE_MODES, modes);
-        } catch (error) {
-            console.error("❌ Sheexcel | Failed to save damage mode:", error);
-        }
-    });
 
     // --- Iframe focus scroll-lock ---
     // When the Google Sheet iframe has focus, the browser auto-scrolls ancestor
@@ -661,58 +622,6 @@ if (!targetElement || !targetElement.dataset?.checkId) {
     // scrollable ancestor at its position from when focus entered.
     // The lock is released the moment focus returns to the Foundry window.
     const iframe = html.find('.sheexcel-google-sheet')[0];
-    const embedWrapper = html.find('.sheexcel-sheet-google-wrapper')[0];
-    const resizer = html.find('.sheexcel-sheet-resizer')[0];
-
-    if (embedWrapper) {
-        const MIN_EMBED_HEIGHT = 360;
-        const savedEmbedHeight = Number(sheet.actor.getFlag(MODULE_NAME, FLAGS.SHEET_EMBED_HEIGHT));
-
-        if (Number.isFinite(savedEmbedHeight) && savedEmbedHeight > 0) {
-            embedWrapper.style.height = `${Math.max(MIN_EMBED_HEIGHT, Math.round(savedEmbedHeight))}px`;
-        }
-
-        if (resizer) {
-            let startY = 0;
-            let startHeight = 0;
-            let resizing = false;
-
-            const onMouseMove = (ev) => {
-                if (!resizing) return;
-                const delta = ev.clientY - startY;
-                const next = Math.max(MIN_EMBED_HEIGHT, Math.round(startHeight + delta));
-                embedWrapper.style.height = `${next}px`;
-            };
-
-            const onMouseUp = async () => {
-                if (!resizing) return;
-                resizing = false;
-                $(document).off('mousemove.sheexcelResize', onMouseMove);
-                $(document).off('mouseup.sheexcelResize', onMouseUp);
-
-                const finalHeight = Math.max(MIN_EMBED_HEIGHT, Math.round(embedWrapper.getBoundingClientRect().height));
-                try {
-                    await sheet.actor.setFlag(MODULE_NAME, FLAGS.SHEET_EMBED_HEIGHT, finalHeight);
-                } catch (error) {
-                    console.error('❌ Sheexcel | Failed to persist sheet embed height:', error);
-                }
-            };
-
-            $(resizer).on('mousedown', (ev) => {
-                ev.preventDefault();
-                startY = ev.clientY;
-                startHeight = embedWrapper.getBoundingClientRect().height;
-                resizing = true;
-                $(document).on('mousemove.sheexcelResize', onMouseMove);
-                $(document).on('mouseup.sheexcelResize', onMouseUp);
-            });
-
-            html.one('remove', () => {
-                $(document).off('mousemove.sheexcelResize', onMouseMove);
-                $(document).off('mouseup.sheexcelResize', onMouseUp);
-            });
-        }
-    }
 
     if (iframe) {
         let lockLoop = null;

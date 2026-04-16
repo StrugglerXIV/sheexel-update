@@ -1,15 +1,100 @@
-// roller.js
+// dmgRoller.js
 
 import { promptDmgBonus } from "./situational.js";
+import { wrapSheexcelChatFlavor } from "./chatStyling.js";
 
 // ——————————————————————————————————————————
-// 1) PROMPT FOR AN OPTIONAL BONUS  
+// DICE SCALE  d2 → d4 → d6 → d8 → d10 → d12
 // ——————————————————————————————————————————
-async function promptBonus(keyword) {
-  const raw = await promptDmgBonus(keyword);
-  if ( raw === null ) return null;               // user hit “cancel”
-  const trimmed = raw.trim();
-  return trimmed === "" ? "" : trimmed;       // normalize empty → ""
+const DIE_SCALE = [2, 4, 6, 8, 10, 12];
+
+export function shiftFormula(formula, direction) {
+  // direction: +1 = scale up, -1 = scale down
+  // Replaces every dN in the formula with the next/previous face count in DIE_SCALE.
+  // If a die is already at the edge of the scale, it stays there.
+  return formula.replace(/(\d*)d(\d+)/gi, (match, count, faces) => {
+    const f = parseInt(faces);
+    const idx = DIE_SCALE.indexOf(f);
+    if (idx === -1) return match;
+    const nextIdx = Math.min(Math.max(0, idx + direction), DIE_SCALE.length - 1);
+    return `${count}d${DIE_SCALE[nextIdx]}`;
+  });
+}
+
+// ——————————————————————————————————————————
+// 1) PRE-ROLL PROMPT: scale + optional bonus
+// ——————————————————————————————————————————
+function promptDmgWithScale(keyword, initialFormula) {
+  return new Promise(resolve => {
+    let currentFormula = initialFormula;
+
+    const dialog = new Dialog({
+      title: `${keyword} — Damage`,
+      content: `
+        <div style="font-family:'Fontin','Georgia',serif;">
+          <div style="margin-bottom:8px;font-size:0.85em;color:#c7a86d;">Base formula</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <button type="button" id="sheexcel-scale-down"
+              style="background:#1a0003;border:1.5px solid #8b3a1a;color:#e07050;border-radius:5px;
+                     padding:3px 12px;font-size:1em;font-weight:700;cursor:pointer;">▼</button>
+            <code id="sheexcel-formula-display"
+              style="flex:1;text-align:center;background:#0d0a06;border:1px solid #3a2e1a;
+                     border-radius:4px;padding:4px 8px;color:#ffd700;font-size:1em;
+                     letter-spacing:0.5px;">${currentFormula}</code>
+            <button type="button" id="sheexcel-scale-up"
+              style="background:#061a03;border:1.5px solid #3a6a1a;color:#80d060;border-radius:5px;
+                     padding:3px 12px;font-size:1em;font-weight:700;cursor:pointer;">▲</button>
+          </div>
+          <div style="margin-bottom:6px;font-size:0.85em;color:#c7a86d;">Situational bonus (optional)</div>
+          <input type="text" id="sheexcel-dmg-bonus" value=""
+            placeholder="e.g. +3, 1d4"
+            style="width:100%;background:#1a140f;border:1px solid #bfa05a;color:#c7a86d;
+                   padding:5px 9px;border-radius:4px;font-size:0.95em;box-sizing:border-box;"/>
+          <div style="margin-top:10px;margin-bottom:6px;font-size:0.85em;color:#c7a86d;">Roll mode</div>
+          <div style="display:flex;gap:16px;margin-bottom:10px;">
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="dmg-mode" value="adv"> ▲ Advantage</label>
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="dmg-mode" value="norm" checked> = Normal</label>
+            <label style="cursor:pointer;color:#c7a86d;"><input type="radio" name="dmg-mode" value="dis"> ▼ Disadvantage</label>
+          </div>
+          <label style="cursor:pointer;color:#c7a86d;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="sheexcel-dmg-crit"> Critical Hit?
+          </label>
+        </div>`,
+      buttons: {
+        roll: {
+          label: "Roll",
+          callback: html => {
+            const bonus = html.find("#sheexcel-dmg-bonus").val().trim();
+            const advMode = html.find("input[name='dmg-mode']:checked").val() || "norm";
+            const isCrit = html.find("#sheexcel-dmg-crit").prop("checked");
+            resolve({ formula: currentFormula, bonus: bonus || "", advMode, isCrit });
+          }
+        },
+        cancel: {
+          label: "Cancel",
+          callback: () => resolve(null)
+        }
+      },
+      default: "roll",
+      render: html => {
+        html.find("#sheexcel-scale-down").on("click", () => {
+          const shifted = shiftFormula(currentFormula, -1);
+          if (shifted !== currentFormula) {
+            currentFormula = shifted;
+            html.find("#sheexcel-formula-display").text(currentFormula);
+          }
+        });
+        html.find("#sheexcel-scale-up").on("click", () => {
+          const shifted = shiftFormula(currentFormula, +1);
+          if (shifted !== currentFormula) {
+            currentFormula = shifted;
+            html.find("#sheexcel-formula-display").text(currentFormula);
+          }
+        });
+      }
+    });
+    dialog.render(true);
+  });
 }
 
 // ——————————————————————————————————————————
@@ -77,10 +162,15 @@ function computeTotal(roll) {
 async function postToChat(roll, preCrit, baseFormula, doubledFormula, isCrit, actor, damageType = "") {
   const speaker = ChatMessage.getSpeaker({ actor });
   const damageLabel = damageType ? `Damage (${damageType})` : "Damage";
+
   const flavor = isCrit
     ? `<strong>🔪 Critical ${damageLabel}</strong> (doubled): Rolled [${preCrit.join(", ")}] → Total ${roll.total}<br><em>Formula:</em> <code>${doubledFormula}</code>`
     : `<strong>🔪 ${damageLabel}</strong>: ${baseFormula} = ${roll.total}`;
-  await roll.toMessage({ speaker, flavor });
+
+  await roll.toMessage({
+    speaker,
+    flavor: wrapSheexcelChatFlavor(flavor, "damage")
+  });
 }
 
 // ——————————————————————————————————————————
@@ -143,15 +233,27 @@ function dropHighestDice(roll) {
  */
 export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage, dmgDisadvantage, damageType = "", bonusRawOverride = undefined }) {
   if (!dmgF) return false;
-  // 6a) Bonus prompt
-  const bonusRaw = bonusRawOverride !== undefined ? bonusRawOverride : await promptBonus(keyword);
-  if (bonusRaw === null) return false; // user cancelled
-
-  // 6b) Build & roll
-  let baseFormula = buildFormula(dmgF, bonusRaw);
-  let formulaToRoll = baseFormula;
+  // 6a) Bonus prompt (with pre-roll scale)
+  let scaledDmgF = dmgF;
+  let bonusRaw;
+  let isCritLocal = isCrit;
   let isAdv = !!dmgAdvantage;
   let isDis = !!dmgDisadvantage;
+  if (bonusRawOverride !== undefined) {
+    bonusRaw = bonusRawOverride;
+  } else {
+    const result = await promptDmgWithScale(keyword, dmgF);
+    if (result === null) return false; // user cancelled
+    scaledDmgF = result.formula;
+    bonusRaw = result.bonus;
+    isCritLocal = result.isCrit;
+    isAdv = result.advMode === "adv";
+    isDis = result.advMode === "dis";
+  }
+
+  // 6b) Build & roll
+  let baseFormula = buildFormula(scaledDmgF, bonusRaw);
+  let formulaToRoll = baseFormula;
   if (isAdv || isDis) formulaToRoll = doubleDiceInFormula(baseFormula);
   console.log(formulaToRoll);
 
@@ -185,7 +287,7 @@ export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage,
 
   let doubledFormula = baseFormula;
   // 6d) Crit handling
-  if (isCrit) {
+  if (isCritLocal) {
     applyCritical(dmgRoll);
     dmgRoll._total = computeTotal(dmgRoll);
 
@@ -206,6 +308,6 @@ export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage,
   }
 
   // 6e) Post
-  await postToChat(dmgRoll, preCrit, baseFormula, doubledFormula, isCrit, sheet.actor, damageType);
+  await postToChat(dmgRoll, preCrit, baseFormula, doubledFormula, isCritLocal, sheet.actor, damageType);
   return true;
 }

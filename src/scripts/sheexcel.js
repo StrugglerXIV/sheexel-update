@@ -1,5 +1,7 @@
-import { MODULE_NAME, SETTINGS } from "../helpers/constants.js";
+import { MODULE_NAME, FLAGS, SETTINGS } from "../helpers/constants.js";
 import { handleInlineRollInteraction } from "../helpers/inlineRolls.js";
+import { rollAttackFromCard } from "../helpers/roller.js";
+import { handleDamage } from "../helpers/dmgRoller.js";
 
 // 1) Preload our Handlebars partials before anything renders
 Hooks.once("init", async () => {
@@ -27,17 +29,8 @@ Hooks.once("init", async () => {
     default: "",
   });
 
-  // Roll mode setting (client)
-  game.settings.register("sheexcel", SETTINGS.ROLL_MODE, {
-    name: "Default Roll Mode", 
-    scope: "client",
-    config: false,
-    type: String,
-    default: "norm"
-  });
-
   // Damage modes setting (client)
-  game.settings.register("sheexcel", SETTINGS.DAMAGE_MODES, {
+  game.settings.register(MODULE_NAME, SETTINGS.DAMAGE_MODES, {
     name: "Attack Damage Modes",
     scope: "client", 
     config: false,
@@ -51,7 +44,7 @@ import { SheexcelActorSheet } from "./SheexcelActorSheet.js";
 
 // --- Sheet Registration ---
 Hooks.once("setup", () => {
-  Actors.registerSheet("sheexcel", SheexcelActorSheet, {
+  Actors.registerSheet(MODULE_NAME, SheexcelActorSheet, {
     types: ["character", "npc", "creature", "vehicle"],
     label: "Sheexcel",
     makeDefault: false
@@ -60,20 +53,34 @@ Hooks.once("setup", () => {
 
 // --- Derived Data Wrapper ---
 Hooks.once("ready", () => {
-  libWrapper.register(
-    "sheexcel_updated",
-    "CONFIG.Actor.documentClass.prototype.prepareDerivedData",
-    function(wrapped, ...args) {
-      wrapped(...args);
-      const refs = this.getFlag("sheexcel_updated", "cellReferences") || [];
+  if (typeof libWrapper !== "undefined") {
+    libWrapper.register(
+      MODULE_NAME,
+      "CONFIG.Actor.documentClass.prototype.prepareDerivedData",
+      function(wrapped, ...args) {
+        wrapped(...args);
+        const refs = this.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || [];
+        this.system = this.system || {};
+        this.system.sheexcel = refs.reduce((o, r) => {
+          if (r.keyword) o[r.keyword] = r.value;
+          return o;
+        }, {});
+      },
+      "WRAPPER"
+    );
+  } else {
+    // libWrapper not installed — patch natively as a fallback
+    const _origPrepare = CONFIG.Actor.documentClass.prototype.prepareDerivedData;
+    CONFIG.Actor.documentClass.prototype.prepareDerivedData = function(...args) {
+      _origPrepare.apply(this, args);
+      const refs = this.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || [];
       this.system = this.system || {};
       this.system.sheexcel = refs.reduce((o, r) => {
         if (r.keyword) o[r.keyword] = r.value;
         return o;
       }, {});
-    },
-    "WRAPPER"
-  );
+    };
+  }
 
   $(document).on("click keydown", ".chat-message .sheexcel-inline-roll", (event) => {
     Promise.resolve(handleInlineRollInteraction(
@@ -97,6 +104,14 @@ Hooks.once("ready", () => {
 });
 
 Hooks.on("renderChatMessage", (message, html) => {
+  if (html.find(".sheexcel-chat-flavor").length) {
+    html.addClass("sheexcel-chat-message sheexcel-chat-roll-message");
+  }
+
+  if (html.find(".sheexcel-attack-card, .sheexcel-spell-chat").length) {
+    html.addClass("sheexcel-chat-message sheexcel-chat-card-message");
+  }
+
   const inlineRollCount = html.find(".sheexcel-inline-roll").length;
   if (!inlineRollCount) return;
 
@@ -117,26 +132,60 @@ Hooks.on("renderChatMessage", (message, html) => {
   });
 });
 
-// --- Sheet Resizer ---
-Hooks.on("renderActorSheet", (app, html, data) => {
-  const wrapper = html.find('.sheexcel-sheet-google-wrapper');
-  const resizer = html.find('.sheexcel-sheet-resizer');
-  let isResizing = false;
-  let startY, startHeight;
+// ——————————————————————————————————————————
+// ATTACK CARD — handle Attack / Damage buttons in chat
+// ——————————————————————————————————————————
+Hooks.on("renderChatMessage", (message, html) => {
+  html.find(".sheexcel-attack-btn").on("click", async function () {
+    const action = this.dataset.action;
+    const card = $(this).closest(".sheexcel-attack-card")[0];
+    if (!card) return;
 
-  resizer.on('mousedown', function (e) {
-    isResizing = true;
-    startY = e.clientY;
-    startHeight = wrapper.height();
-    $(document).on('mousemove.sheexcelResize', function (e) {
-      if (!isResizing) return;
-      let newHeight = Math.max(100, startHeight + (e.clientY - startY));
-      wrapper.height(newHeight);
-    });
-    $(document).on('mouseup.sheexcelResize', function () {
-      isResizing = false;
-      $(document).off('.sheexcelResize');
-    });
-    e.preventDefault();
+    const actorId = card.dataset.actorId;
+    const actor = game.actors?.get(actorId);
+    if (!actor) return ui.notifications.warn("Actor not found for this attack card.");
+    const fakeSheet = { actor };
+
+    if (action === "attack") {
+      const mod = parseInt(card.dataset.mod) || 0;
+      const crit = parseInt(card.dataset.crit) || 20;
+      const keyword = card.dataset.keyword || "Attack";
+      await rollAttackFromCard({ mod, crit, keyword, sheet: fakeSheet });
+
+    } else if (action === "damage") {
+      const dmgF = card.dataset.dmgF || null;
+      const damageType = card.dataset.damageType || "";
+      let damageParts = [];
+      try { damageParts = JSON.parse(decodeURIComponent(card.dataset.damageParts || "%5B%5D")); } catch {}
+
+      if (damageParts.length > 0) {
+        for (const part of damageParts) {
+          const result = await handleDamage({
+            dmgF: part.formula,
+            isCrit: false,
+            keyword: part.type ? `Damage (${part.type})` : "Damage",
+            damageType: part.type,
+            sheet: fakeSheet,
+            dmgAdvantage: false,
+            dmgDisadvantage: false,
+          });
+          if (result === false) break;
+        }
+      } else if (dmgF) {
+        await handleDamage({
+          dmgF,
+          isCrit: false,
+          keyword: damageType ? `Damage (${damageType})` : "Damage",
+          damageType,
+          sheet: fakeSheet,
+          dmgAdvantage: false,
+          dmgDisadvantage: false,
+        });
+      } else {
+        ui.notifications.warn("No damage formula on this attack card.");
+      }
+    }
   });
 });
+
+

@@ -87,8 +87,19 @@ export class SheexcelActorSheet extends ActorSheet {
   // Activate listeners 
     activateListeners(html) {
     super.activateListeners(html);
-    attachSheexcelListeners(this, html);
-    this._startOrbPolling(html);
+
+    try {
+      attachSheexcelListeners(this, html);
+    } catch (error) {
+      console.error("Sheexcel | Listener initialization failed:", error);
+    }
+
+    try {
+      this._startOrbPolling(html);
+    } catch (error) {
+      console.error("Sheexcel | Orb initialization failed:", error);
+    }
+
     this._loadArmorFromFlags(html);
     this._loadStatsFromFlags(html);
   }
@@ -714,60 +725,220 @@ export class SheexcelActorSheet extends ActorSheet {
     };
   }
 
-  async _updateStatOrb(html, options) {
-    const { fillSelector, labelSelector, fillVar, labels, cacheKey, allowZeroMax = false } = options;
-    const orbFill = html.find(fillSelector);
-    const orbLabel = html.find(labelSelector);
-    if (!orbFill.length || !orbLabel.length) return;
-
-    const stats = await this._getStatValues(labels, cacheKey, { allowZeroMax });
-    if (!stats) return;
-    if (!allowZeroMax && stats.max <= 0) return;
-
-    let ratio = 0;
-    if (stats.max > 0) {
-      ratio = Math.min(1, Math.max(0, stats.current / stats.max));
-    } else if (allowZeroMax && stats.current > 0) {
-      ratio = 1;
-    }
-    orbFill.css(fillVar, `${Math.round(ratio * 100)}%`);
-    orbLabel.text(`${stats.current}/${stats.max}`);
+  // Read only the BASE (max) value for a stat from the Google Sheet.
+  async _getMaxFromSheet(labels, cacheKey) {
+    const cells = await this._getStatCells(labels, cacheKey);
+    if (!cells) return null;
+    const safeSheet = this._sanitizeSheetName(cells.sheetName);
+    const range = `${safeSheet}!${cells.baseCell}`;
+    const response = await this._fetchValuesNoCache(cells.sheetId, [range]);
+    const raw = response.valueRanges?.[0]?.values?.[0]?.[0] ?? "";
+    const max = this._parseRawNumber(raw);
+    if (!Number.isFinite(max) || max < 0) return null;
+    return max;
   }
 
-  async _updateOrbs(html) {
+  // Apply current orb state (CSS vars + labels) from flags + cached max values.
+  _applyPoeOrbValues(html) {
+    const maxHp  = this._orbMaxHp  ?? this.actor.getFlag(MODULE_NAME, FLAGS.ORB_MAX_HP)  ?? 0;
+    const maxVit = this._orbMaxVit ?? this.actor.getFlag(MODULE_NAME, FLAGS.ORB_MAX_VIT) ?? 0;
+    const currentHp  = this.actor.getFlag(MODULE_NAME, FLAGS.ORB_CURRENT_HP)  ?? maxHp;
+    const currentVit = this.actor.getFlag(MODULE_NAME, FLAGS.ORB_CURRENT_VIT) ?? (maxVit > 0 ? maxVit : 0);
+    const customFrameImage = String(this.actor.getFlag(MODULE_NAME, FLAGS.ORB_FRAME_IMAGE) || "").trim();
+
+    const lifeFill = maxHp  > 0 ? Math.min(1, Math.max(0, currentHp  / maxHp))  : 1;
+    const vitFill  = maxVit > 0 ? Math.min(1, Math.max(0, currentVit / maxVit)) : 0;
+
+    const orb = html.find('.sheexcel-poe-orb');
+    if (!orb.length) return;
+    const orbBorder = html.find('.sheexcel-poe-orb-border');
+
+    orb[0].style.setProperty('--life-fill', lifeFill.toFixed(4));
+    orb[0].style.setProperty('--vit-fill',  vitFill.toFixed(4));
+    if (orbBorder.length) {
+      orbBorder[0].style.backgroundImage = customFrameImage ? `url("${customFrameImage.replace(/"/g, '\\"')}")` : "";
+    }
+
+    html.find('.sheexcel-poe-life-value').text(
+      maxHp > 0 ? `${Math.round(currentHp)}/${Math.round(maxHp)}` : '-'
+    );
+    html.find('.sheexcel-poe-shield-value').text(
+      maxVit > 0 ? `${Math.round(currentVit)}/${Math.round(maxVit)}` : '0/0'
+    );
+
+    const shieldLayer = html.find('.sheexcel-poe-shield-layer');
+    const shieldLabel = html.find('.sheexcel-poe-shield-label');
+    if (maxVit <= 0) {
+      shieldLayer.hide();
+      shieldLabel.hide();
+    } else {
+      shieldLayer.show();
+      shieldLabel.show();
+    }
+
+    orb.toggleClass('has-shield',    maxVit > 0 && currentVit > 0);
+    orb.toggleClass('life-critical', maxHp  > 0 && (currentHp / maxHp) < 0.3);
+  }
+
+  // Fetch max values from sheet; cache them in flags so they survive reloads.
+  async _updatePoeOrb(html) {
     if (this._orbUpdateInFlight) return;
     this._orbUpdateInFlight = true;
     try {
-      await this._updateStatOrb(html, {
-        fillSelector: '.sheexcel-hp-orb-fill',
-        labelSelector: '.sheexcel-hp-orb-label',
-        fillVar: '--hp-fill',
-        labels: ["health", "hp"],
-        cacheKey: "_hpCells"
-      });
+      const [maxHp, maxVit] = await Promise.all([
+        this._getMaxFromSheet(["health", "hp"],    "_hpCells").catch(() => null),
+        this._getMaxFromSheet(["vitality", "vit"], "_vitCells").catch(() => null)
+      ]);
 
-      await this._updateStatOrb(html, {
-        fillSelector: '.sheexcel-vitality-orb-fill',
-        labelSelector: '.sheexcel-vitality-orb-label',
-        fillVar: '--vit-fill',
-        labels: ["vitality", "vit"],
-        cacheKey: "_vitCells",
-        allowZeroMax: true
-      });
+      let changed = false;
+      if (maxHp !== null && maxHp !== this._orbMaxHp) {
+        this._orbMaxHp = maxHp;
+        await this.actor.setFlag(MODULE_NAME, FLAGS.ORB_MAX_HP, maxHp);
+        changed = true;
+      }
+      if (maxVit !== null && maxVit !== this._orbMaxVit) {
+        this._orbMaxVit = maxVit;
+        await this.actor.setFlag(MODULE_NAME, FLAGS.ORB_MAX_VIT, maxVit);
+        changed = true;
+      }
+      if (changed) this._applyPoeOrbValues(html);
     } finally {
       this._orbUpdateInFlight = false;
     }
   }
 
-  _startOrbPolling(html) {
-    if (this._orbPoller) {
-      clearInterval(this._orbPoller);
-    }
+  _setupOrbClickHandlers(html) {
+    html.find('.sheexcel-poe-orb').on('click.poeOrb', () => {
+      this._openOrbEditDialog(html);
+    });
+  }
 
-    this._updateOrbs(html).catch(() => {});
+  _openOrbFrameDialog(html) {
+    const currentFrameImage = String(this.actor.getFlag(MODULE_NAME, FLAGS.ORB_FRAME_IMAGE) || "").trim();
+
+    const content = `
+      <div style="padding:12px 4px 4px;display:flex;flex-direction:column;gap:10px;">
+        <label style="color:#c7a86d;font-weight:700;font-family:'Fontin',serif;">Orb Frame Image</label>
+        <input type="text" id="poe-orb-frame-input" value="${escapeHtml(currentFrameImage)}"
+          placeholder="Leave empty for the default border"
+          style="width:100%;background:#1a140f;border:1px solid #bfa05a;color:#f0dfb3;padding:5px 9px;border-radius:4px;font-size:0.95em;box-sizing:border-box;"/>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="poe-orb-frame-browse"
+            style="flex:1;background:#241a10;border:1px solid #bfa05a;color:#f0dfb3;padding:5px 9px;border-radius:4px;font-family:'Fontin',serif;cursor:pointer;">Browse</button>
+          <button type="button" id="poe-orb-frame-clear"
+            style="flex:1;background:#1a0003;border:1px solid #8b3a1a;color:#ffb3a1;padding:5px 9px;border-radius:4px;font-family:'Fontin',serif;cursor:pointer;">Use Default</button>
+        </div>
+      </div>`;
+
+    new Dialog({
+      title: "Change Orb Frame",
+      content,
+      buttons: {
+        ok: {
+          label: "Confirm",
+          callback: async (dialogHtml) => {
+            const nextFrameImage = String(dialogHtml.find("#poe-orb-frame-input").val() || "").trim();
+            if (nextFrameImage) {
+              await this.actor.setFlag(MODULE_NAME, FLAGS.ORB_FRAME_IMAGE, nextFrameImage);
+            } else {
+              await this.actor.unsetFlag(MODULE_NAME, FLAGS.ORB_FRAME_IMAGE);
+            }
+            this._applyPoeOrbValues(html);
+          }
+        },
+        cancel: { label: "Cancel" }
+      },
+      default: "ok",
+      render: (dialogHtml) => {
+        dialogHtml.find("#poe-orb-frame-browse").on("click", (event) => {
+          event.preventDefault();
+          new FilePicker({
+            type: "image",
+            current: dialogHtml.find("#poe-orb-frame-input").val() || currentFrameImage,
+            callback: (path) => {
+              dialogHtml.find("#poe-orb-frame-input").val(path);
+            }
+          }).render(true);
+        });
+
+        dialogHtml.find("#poe-orb-frame-clear").on("click", (event) => {
+          event.preventDefault();
+          dialogHtml.find("#poe-orb-frame-input").val("");
+        });
+      }
+    }).render(true);
+  }
+
+  _openOrbEditDialog(html) {
+    const maxHp  = this._orbMaxHp  ?? this.actor.getFlag(MODULE_NAME, FLAGS.ORB_MAX_HP)  ?? 0;
+    const maxVit = this._orbMaxVit ?? this.actor.getFlag(MODULE_NAME, FLAGS.ORB_MAX_VIT) ?? 0;
+    const currentHp  = this.actor.getFlag(MODULE_NAME, FLAGS.ORB_CURRENT_HP)  ?? maxHp;
+    const currentVit = this.actor.getFlag(MODULE_NAME, FLAGS.ORB_CURRENT_VIT) ?? maxVit;
+
+    const shieldRow = maxVit > 0 ? `
+      <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <label style="color:#88d4ff;font-weight:700;min-width:54px;font-family:'Fontin',serif;">Vitality</label>
+        <input type="number" id="poe-shield-input" value="${Math.round(currentVit)}" min="0" max="${Math.round(maxVit)}"
+          style="flex:1;background:#000a1f;border:1px solid #1e7fd4;color:#d4eeff;padding:5px 9px;border-radius:4px;font-size:1em;"/>
+        <span style="color:#555;font-size:0.85em;min-width:40px;">/ ${Math.round(maxVit)}</span>
+      </div>` : '';
+
+    const content = `
+      <div style="padding:12px 4px 4px;">
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+          <label style="color:#ff9898;font-weight:700;min-width:54px;font-family:'Fontin',serif;">Health</label>
+          <input type="number" id="poe-life-input" value="${Math.round(currentHp)}" min="0" max="${Math.round(maxHp)}"
+            style="flex:1;background:#1a0003;border:1px solid #8b0000;color:#ffdddd;padding:5px 9px;border-radius:4px;font-size:1em;"/>
+          <span style="color:#555;font-size:0.85em;min-width:40px;">/ ${Math.round(maxHp)}</span>
+        </div>
+        ${shieldRow}
+      </div>`;
+
+    new Dialog({
+      title: "Set Health & Vitality",
+      content,
+      buttons: {
+        frame: {
+          label: "Change Frame",
+          callback: () => {
+            this._openOrbFrameDialog(html);
+          }
+        },
+        ok: {
+          label: "Confirm",
+          callback: async (d) => {
+            const rawHp  = parseInt(d.find("#poe-life-input").val());
+            const safeHp = Math.min(maxHp,  Math.max(0, isNaN(rawHp)  ? currentHp  : rawHp));
+            await this.actor.setFlag(MODULE_NAME, FLAGS.ORB_CURRENT_HP, safeHp);
+            if (maxVit > 0) {
+              const rawVit  = parseInt(d.find("#poe-shield-input").val());
+              const safeVit = Math.min(maxVit, Math.max(0, isNaN(rawVit) ? currentVit : rawVit));
+              await this.actor.setFlag(MODULE_NAME, FLAGS.ORB_CURRENT_VIT, safeVit);
+            }
+            this._applyPoeOrbValues(html);
+          }
+        },
+        cancel: { label: "Cancel" }
+      },
+      default: "ok"
+    }).render(true);
+  }
+
+  _startOrbPolling(html) {
+    if (this._orbPoller) clearInterval(this._orbPoller);
+
+    // Seed instance vars from cached flags so first render is instant.
+    this._orbMaxHp  = this.actor.getFlag(MODULE_NAME, FLAGS.ORB_MAX_HP)  ?? null;
+    this._orbMaxVit = this.actor.getFlag(MODULE_NAME, FLAGS.ORB_MAX_VIT) ?? null;
+
+    this._applyPoeOrbValues(html);
+    this._updatePoeOrb(html).catch(() => {});
+
     this._orbPoller = setInterval(() => {
-      this._updateOrbs(html).catch(() => {});
-    }, 2000);
+      this._updatePoeOrb(html).catch(() => {});
+    }, 5000);
+
+    this._setupOrbClickHandlers(html);
   }
 
   _extractLabelValueEntries(scan, filterFn, options = {}) {
