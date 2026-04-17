@@ -16,9 +16,12 @@
         <div class="sheexcel-rest-card collapsed" data-index="{{this.index}}">
           <div class="sheexcel-rest-card-header">
             <div class="sheexcel-rest-title">{{this.title}}</div>
-            <button type="button" class="sheexcel-rest-toggle" title="Expand">
-              <span class="sheexcel-rest-toggle-icon">▶</span>
-            </button>
+            <div class="sheexcel-rest-header-actions">
+              <button type="button" class="sheexcel-rest-post" data-entry-index="{{this.index}}" title="Post to Chat">Chat</button>
+              <button type="button" class="sheexcel-rest-toggle" title="Expand">
+                <span class="sheexcel-rest-toggle-icon">▶</span>
+              </button>
+            </div>
           </div>
 
           {{#if this.postFullCard}}

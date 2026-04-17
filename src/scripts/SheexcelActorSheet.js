@@ -459,18 +459,12 @@ export class SheexcelActorSheet extends ActorSheet {
         valueMap.set(entry.label, value);
       });
 
-      const rows = html.find('.sheexcel-armor-row');
-      rows.each((_, row) => {
-        const label = String(row.dataset.armorLabel || "").trim().toLowerCase();
-        const alt = label === "radiant" ? "raidant" : label;
-        const value = valueMap.get(label) ?? valueMap.get(alt) ?? "-";
-        $(row).find('.sheexcel-armor-value').text(value);
-      });
-
       await this.actor.setFlag(MODULE_NAME, FLAGS.ARMOR_CACHE, {
         values: Object.fromEntries(valueMap),
         updatedAt: Date.now()
       });
+      await this.actor.unsetFlag(MODULE_NAME, FLAGS.ARMOR_OVERRIDES);
+      this._applyArmorValuesToDom(html, Object.fromEntries(valueMap));
     } finally {
       this._armorUpdateInFlight = false;
     }
@@ -480,16 +474,91 @@ export class SheexcelActorSheet extends ActorSheet {
     this._updateArmorBlock(html).catch(() => {});
   }
 
-  _loadArmorFromFlags(html) {
-    const cache = this.actor.getFlag(MODULE_NAME, FLAGS.ARMOR_CACHE);
-    if (!cache?.values) return;
-    const rows = html.find('.sheexcel-armor-row');
+  _sanitizeEditableResourceValue(value, fallback = "-") {
+    const raw = String(value ?? "").trim();
+    return raw || fallback;
+  }
+
+  _readArmorOverrideMap() {
+    const overrides = this.actor.getFlag(MODULE_NAME, FLAGS.ARMOR_OVERRIDES) || {};
+    return overrides && typeof overrides === "object" ? overrides : {};
+  }
+
+  _applyArmorValuesToDom(html, baseValues = null) {
+    const cache = this.actor.getFlag(MODULE_NAME, FLAGS.ARMOR_CACHE) || {};
+    const sourceValues = baseValues || cache.values || {};
+    const overrides = this._readArmorOverrideMap();
+
+    const rows = html.find(".sheexcel-armor-row");
     rows.each((_, row) => {
       const label = String(row.dataset.armorLabel || "").trim().toLowerCase();
       const alt = label === "radiant" ? "raidant" : label;
-      const value = cache.values[label] ?? cache.values[alt] ?? "-";
-      $(row).find('.sheexcel-armor-value').text(value);
+      const baseValue = sourceValues[label] ?? sourceValues[alt] ?? "-";
+      const overrideValue = overrides[label] ?? overrides[alt];
+      const nextValue = this._sanitizeEditableResourceValue(overrideValue ?? baseValue);
+      const input = $(row).find(".sheexcel-armor-value-input");
+      input.val(nextValue);
+      input.attr("data-armor-label", label);
     });
+  }
+
+  async _saveArmorOverridesFromSheet(html) {
+    const overrides = {};
+    html.find(".sheexcel-armor-row").each((_, row) => {
+      const label = String(row.dataset.armorLabel || "").trim().toLowerCase();
+      if (!label) return;
+      const value = this._sanitizeEditableResourceValue($(row).find(".sheexcel-armor-value-input").val());
+      overrides[label] = value;
+    });
+    await this.actor.setFlag(MODULE_NAME, FLAGS.ARMOR_OVERRIDES, overrides);
+  }
+
+  _loadArmorFromFlags(html) {
+    const cache = this.actor.getFlag(MODULE_NAME, FLAGS.ARMOR_CACHE);
+    if (!cache?.values) return;
+    this._applyArmorValuesToDom(html, cache.values);
+  }
+
+  _readStatsOverrideMap() {
+    const overrides = this.actor.getFlag(MODULE_NAME, FLAGS.STATS_OVERRIDES) || {};
+    return overrides && typeof overrides === "object" ? overrides : {};
+  }
+
+  _renderStatsGrid(html, entries = [], options = {}) {
+    const { sheetName = "", overrideValues = null } = options;
+    const overrides = overrideValues || this._readStatsOverrideMap();
+    const grid = html.find(".sheexcel-stats-grid");
+
+    grid.attr("data-stats-sheet", sheetName || "");
+    grid.empty();
+
+    entries.forEach((entry) => {
+      const labelKey = String(entry.label || "").trim().toLowerCase();
+      const label = entry.displayLabel || entry.label || "";
+      const totCell = entry.totCell || "";
+      const sheetCurrent = this._sanitizeEditableResourceValue(entry.current ?? entry.value);
+      const totalReference = this._sanitizeEditableResourceValue(entry.total ?? entry.value);
+      const overrideValue = overrides[labelKey];
+      const value = this._sanitizeEditableResourceValue(overrideValue ?? sheetCurrent);
+      const row = `
+        <div class="sheexcel-stats-row" data-stats-label="${labelKey}" data-stats-cell="${totCell}">
+          <span class="sheexcel-stats-label">${label}</span>
+          <input type="text" class="sheexcel-stats-value-input" data-stats-label="${labelKey}" value="${value}" aria-label="${label} current stat value">
+          <span class="sheexcel-stats-total-ref" title="Total from sheet">${totalReference}</span>
+        </div>
+      `;
+      grid.append(row);
+    });
+  }
+
+  async _saveStatsOverridesFromSheet(html) {
+    const overrides = {};
+    html.find(".sheexcel-stats-value-input").each((_, input) => {
+      const label = String(input.dataset.statsLabel || "").trim().toLowerCase();
+      if (!label) return;
+      overrides[label] = this._sanitizeEditableResourceValue($(input).val());
+    });
+    await this.actor.setFlag(MODULE_NAME, FLAGS.STATS_OVERRIDES, overrides);
   }
 
   async _locateStatsCells(sheetName) {
@@ -621,34 +690,31 @@ export class SheexcelActorSheet extends ActorSheet {
       });
 
       const valueMap = new Map();
+      const totalMap = new Map();
       cells.entries.forEach((entry) => {
         const totRaw = entry.totCell ? (valueByCell.get(entry.totCell) ?? "") : "";
         const baseRaw = entry.baseCell ? (valueByCell.get(entry.baseCell) ?? "") : "";
-        const raw = String(totRaw || baseRaw || "").trim();
-        const numberMatch = raw.match(/[+-]?\d+(?:\.\d+)?/);
-        valueMap.set(entry.label, numberMatch?.[0] ?? raw ?? "-");
+        const currentRaw = String(totRaw || baseRaw || "").trim();
+        const totalRaw = String(baseRaw || totRaw || "").trim();
+        const currentMatch = currentRaw.match(/[+-]?\d+(?:\.\d+)?/);
+        const totalMatch = totalRaw.match(/[+-]?\d+(?:\.\d+)?/);
+        const currentValue = currentMatch?.[0] ?? currentRaw ?? "-";
+        const totalValue = totalMatch?.[0] ?? totalRaw ?? "-";
+        valueMap.set(entry.label, currentValue);
+        totalMap.set(entry.label, totalValue);
       });
 
-      const grid = html.find('.sheexcel-stats-grid');
-      grid.attr("data-stats-sheet", cells.sheetName || "");
-      grid.empty();
       const entriesCache = [];
       cells.entries.forEach((entry) => {
         const value = valueMap.get(entry.label) ?? "-";
         const label = entry.displayLabel || entry.label || "";
-        const totCell = entry.totCell || "";
-        const row = `
-          <div class="sheexcel-stats-row" data-stats-label="${entry.label}" data-stats-cell="${totCell}">
-            <span class="sheexcel-stats-label">${label}</span>
-            <span class="sheexcel-stats-value">${value}</span>
-          </div>
-        `;
-        grid.append(row);
         entriesCache.push({
           label: entry.label,
           displayLabel: label,
           value,
-          totCell,
+          current: value,
+          total: totalMap.get(entry.label) ?? value,
+          totCell: entry.totCell || "",
           baseCell: entry.baseCell || ""
         });
       });
@@ -657,6 +723,11 @@ export class SheexcelActorSheet extends ActorSheet {
         entries: entriesCache,
         updatedAt: Date.now(),
         sheetName: cells.sheetName || ""
+      });
+      await this.actor.unsetFlag(MODULE_NAME, FLAGS.STATS_OVERRIDES);
+      this._renderStatsGrid(html, entriesCache, {
+        sheetName: cells.sheetName || "",
+        overrideValues: {}
       });
     } finally {
       this._statsUpdateInFlight = false;
@@ -670,22 +741,7 @@ export class SheexcelActorSheet extends ActorSheet {
   _loadStatsFromFlags(html) {
     const cache = this.actor.getFlag(MODULE_NAME, FLAGS.STATS_CACHE);
     if (!cache?.entries?.length) return;
-
-    const grid = html.find('.sheexcel-stats-grid');
-    grid.attr("data-stats-sheet", cache.sheetName || "");
-    grid.empty();
-    cache.entries.forEach((entry) => {
-      const label = entry.displayLabel || entry.label || "";
-      const totCell = entry.totCell || "";
-      const value = entry.value ?? "-";
-      const row = `
-        <div class="sheexcel-stats-row" data-stats-label="${entry.label}" data-stats-cell="${totCell}">
-          <span class="sheexcel-stats-label">${label}</span>
-          <span class="sheexcel-stats-value">${value}</span>
-        </div>
-      `;
-      grid.append(row);
-    });
+    this._renderStatsGrid(html, cache.entries, { sheetName: cache.sheetName || "" });
   }
 
   async _getStatCells(labels, cacheKey) {
@@ -985,6 +1041,13 @@ export class SheexcelActorSheet extends ActorSheet {
   }
 
   _extractSpellBlocks(scan) {
+    const markerMap = {
+      "B": "Bestowed",
+      "P": "Prepared",
+      "I": "Innate",
+      "XX": "Granted by Class Ability"
+    };
+    const titleScanEndCol = Math.min(scan.endColumn, scan.startColumn + 4);
     const labelMap = {
       "circle": "circle",
       "type": "spellType",
@@ -1029,38 +1092,65 @@ export class SheexcelActorSheet extends ActorSheet {
       }
       return false;
     };
+    const rowHasLeadValue = (row) => {
+      for (let col = scan.startColumn; col <= titleScanEndCol; col++) {
+        if (scan.readCell(row, col)) return true;
+      }
+      return false;
+    };
 
     const nameBlocks = [];
     for (let row = scan.startRow; row <= scan.endRow; row++) {
       if (!rowHasCircleLabel(row + 1)) continue;
-      if (row > scan.startRow && rowHasAnyValue(row - 1)) continue;
+      if (row > scan.startRow && rowHasLeadValue(row - 1)) continue;
       if (rowHasLabel(row)) continue;
 
-      let nameCol = null;
-      let nameValue = "";
-      let nonLabelCount = 0;
+      const nonLabelCells = [];
       let labelCount = 0;
 
-      for (let col = scan.startColumn; col <= scan.endColumn; col++) {
+      for (let col = scan.startColumn; col <= titleScanEndCol; col++) {
         const value = scan.readCell(row, col);
         if (!value) continue;
         if (String(value).trim().endsWith(":")) {
           labelCount += 1;
           continue;
         }
-        if (!nameCol) {
-          nameCol = col;
-          nameValue = value;
+        nonLabelCells.push({ col, value: String(value).trim() });
+      }
+
+      if (!nonLabelCells.length) continue;
+      if (labelCount > 0) continue;
+
+      let markerCode = "";
+      let nameCol = null;
+      let nameValue = "";
+
+      if (nonLabelCells.length === 1) {
+        nameCol = nonLabelCells[0].col;
+        nameValue = nonLabelCells[0].value;
+      } else if (nonLabelCells.length === 2) {
+        const first = nonLabelCells[0].value.toUpperCase();
+        if (markerMap[first]) {
+          markerCode = first;
+          nameCol = nonLabelCells[1].col;
+          nameValue = nonLabelCells[1].value;
+        } else {
+          continue;
         }
-        nonLabelCount += 1;
+      } else {
+        continue;
       }
 
       if (!nameCol || !nameValue) continue;
-      if (labelCount > 0) continue;
-      if (nonLabelCount !== 1) continue;
       if (!/[A-Za-z]/.test(String(nameValue))) continue;
 
-      nameBlocks.push({ row, col: nameCol, name: nameValue });
+      nameBlocks.push({
+        row,
+        col: nameCol,
+        name: nameValue,
+        spellMarker: markerCode,
+        spellMarkerLabel: markerMap[markerCode] || ""
+      });
     }
 
     const spells = [];
@@ -1077,6 +1167,8 @@ export class SheexcelActorSheet extends ActorSheet {
         sheet: "",
         keyword: spellName,
         spellName,
+        spellMarker: nameBlocks[i].spellMarker || "",
+        spellMarkerLabel: nameBlocks[i].spellMarkerLabel || "",
         spellNameCell: this._buildSingleCell(nameCol, nameRow),
         circle: "",
         spellType: "",
@@ -1868,6 +1960,40 @@ export class SheexcelActorSheet extends ActorSheet {
     return `${dice}${modTerm}`;
   }
 
+  _formatAbilityTokensWithMods(text, mods = null) {
+    const source = String(text || "");
+    if (!source) return "";
+
+    const modMap = mods || this.actor.getFlag(MODULE_NAME, FLAGS.ABILITY_MODS) || {};
+    return source.replace(/\b(STR|DEX|CON|INT|WIS|CHA)\b/g, (match) => {
+      const value = modMap[match];
+      if (!Number.isFinite(value)) return match;
+      return `${match} [${value}]`;
+    });
+  }
+
+  async _refreshCoreAbilityModsFromMetadata(metadata) {
+    try {
+      const sheets = Array.isArray(metadata?.sheets) ? metadata.sheets : [];
+      const coreSheet = sheets.find(s => /^core$/i.test(s.properties?.title || ""))
+        || sheets.find(s => /core/i.test(s.properties?.title || ""));
+      const sheetName = coreSheet?.properties?.title;
+      if (!sheetName) return {};
+
+      const rowCount = Math.max(2, Number(coreSheet.properties?.gridProperties?.rowCount) || 400);
+      const columnCount = Math.max(2, Number(coreSheet.properties?.gridProperties?.columnCount) || 40);
+      const bottomRight = `${this._columnNumberToLetters(columnCount)}${rowCount}`;
+      const scan = await this._scanArea(sheetName, "A1", bottomRight);
+      const mods = this._extractCoreAbilityMods(scan);
+      if (Object.keys(mods).length) {
+        await this.actor.setFlag(MODULE_NAME, FLAGS.ABILITY_MODS, mods);
+      }
+      return mods;
+    } catch (_error) {
+      return this.actor.getFlag(MODULE_NAME, FLAGS.ABILITY_MODS) || {};
+    }
+  }
+
   _extractDamageDetailFromText(text) {
     const match = String(text || "").match(/\d+\s*d\s*\d+[^.]*/i);
     return match ? match[0].trim() : "";
@@ -2224,6 +2350,7 @@ export class SheexcelActorSheet extends ActorSheet {
     try {
       this._invalidateApiCache();
       const metadata = await this._fetchSheetMetadata();
+      await this._refreshCoreAbilityModsFromMetadata(metadata);
       const sheets = Array.isArray(metadata.sheets) ? metadata.sheets : [];
       if (!sheets.length) throw new Error("No sheet metadata found.");
 
@@ -2476,6 +2603,16 @@ export class SheexcelActorSheet extends ActorSheet {
       .trim()
       .replace(/:$/, "")
       .toLowerCase();
+    const normalizeFieldValue = (field, value) => {
+      const text = String(value || "").trim();
+      if (!text) return "";
+
+      if (field === "draw" && /^quick$/i.test(text)) {
+        return "Quick Action";
+      }
+
+      return text;
+    };
     const labelMap = {
       "type": "gearType",
       "description": "description",
@@ -2490,11 +2627,23 @@ export class SheexcelActorSheet extends ActorSheet {
       "integrity": "integrity",
       "resilience": "resilience",
       "reach": "reach",
+      "range": "reach",
       "draw": "draw",
+      "action": "draw",
+      "quick": "draw",
       "accuracy": "accuracy",
       "critical": "critical",
       "damage": "damage",
       "armor": "armor",
+      "donning": "donning",
+      "discomfort": "discomfort",
+      "charges": "charges",
+      "charge": "charges",
+      "fuel": "fuel",
+      "volume": "volume",
+      "single hand": "singleHand",
+      "single-hand": "singleHand",
+      "singlehand": "singleHand",
       "ability": "abilities"
     };
     const multiFields = new Set(["description", "abilities"]);
@@ -2555,12 +2704,21 @@ export class SheexcelActorSheet extends ActorSheet {
         critical: "",
         damage: "",
         armor: "",
+        donning: "",
+        discomfort: "",
+        charges: "",
+        fuel: "",
+        volume: "",
+        singleHand: "",
+        flavor: "",
         abilities: "",
         subchecks: []
       };
 
       const multiData = {};
       let activeMulti = null;
+      const flavorLines = [];
+      let seenFirstLabel = false;
 
       for (let r = row + 1; r <= blockEnd; r++) {
         const rowData = [];
@@ -2568,65 +2726,80 @@ export class SheexcelActorSheet extends ActorSheet {
           rowData.push(scan.readCell(r, col));
         }
 
-        // Check for label: value pattern in this row
+        // Check for one or more label: value segments in this row
         let foundLabel = false;
-        // Search all columns for labels (ending with :)
+        const labelColumns = [];
         for (let col = scan.startColumn; col <= scan.endColumn; col++) {
           const cell = String(rowData[col - scan.startColumn] || "").trim();
-          if (!cell.endsWith(":")) continue;
+          if (cell.endsWith(":")) labelColumns.push(col);
+        }
 
+        if (labelColumns.length) {
           foundLabel = true;
+          seenFirstLabel = true;
           activeMulti = null;
 
-          const normalized = normalizeLabel(cell);
-          const field = labelMap[normalized];
-          if (!field) continue;
+          for (let idx = 0; idx < labelColumns.length; idx++) {
+            const col = labelColumns[idx];
+            const nextLabelCol = idx + 1 < labelColumns.length ? labelColumns[idx + 1] : scan.endColumn + 1;
+            const cell = String(rowData[col - scan.startColumn] || "").trim();
+            const normalized = normalizeLabel(cell);
+            const field = labelMap[normalized];
+            if (!field) continue;
 
-          // Collect all non-empty cells after the label in this row
-          const values = [];
-          let firstValueCol = null;
-          for (let vc = col + 1; vc <= scan.endColumn; vc++) {
-            const val = String(rowData[vc - scan.startColumn] || "").trim();
-            if (!val) continue;
-            if (!firstValueCol) firstValueCol = vc;
-            values.push(val);
-          }
-
-          if (!firstValueCol || !values.length) {
-            // Even if no values in this row, start multi-field capture for abilities
-            if (field === "abilities") {
-              activeMulti = {
-                field: field,
-                col: col + 1,
-                endCol: scan.endColumn,
-                startRow: r,
-                endRow: r,
-                values: []
-              };
-              if (!multiData[field]) multiData[field] = activeMulti;
+            const values = [];
+            let firstValueCol = null;
+            let lastValueCol = null;
+            for (let vc = col + 1; vc < nextLabelCol; vc++) {
+              const val = String(rowData[vc - scan.startColumn] || "").trim();
+              if (!val) continue;
+              if (!firstValueCol) firstValueCol = vc;
+              lastValueCol = vc;
+              values.push(val);
             }
-            continue;
-          }
 
-          const value = values.join(" ");
-          if (multiFields.has(field)) {
-            activeMulti = {
-              field: field,
-              col: firstValueCol,
-              endCol: scan.endColumn,
-              startRow: r,
-              endRow: r,
-              values: value ? [value] : []
-            };
-            if (!multiData[field]) multiData[field] = activeMulti;
-          } else {
-            gear[field] = value;
-            const range = firstValueCol === scan.endColumn
-              ? this._buildSingleCell(firstValueCol, r)
-              : this._buildAbsoluteRange(firstValueCol, scan.endColumn, r);
-            gear[`${field}Cell`] = range;
+            if (!firstValueCol || !values.length) {
+              if (field === "abilities") {
+                if (!multiData[field]) {
+                  multiData[field] = {
+                    field,
+                    col: col + 1,
+                    endCol: scan.endColumn,
+                    startRow: r,
+                    endRow: r,
+                    values: []
+                  };
+                }
+                activeMulti = multiData[field];
+              }
+              continue;
+            }
+
+            const value = normalizeFieldValue(field, values.join(" "));
+            if (multiFields.has(field)) {
+              if (!multiData[field]) {
+                multiData[field] = {
+                  field,
+                  col: firstValueCol,
+                  endCol: scan.endColumn,
+                  startRow: r,
+                  endRow: r,
+                  values: []
+                };
+              }
+
+              const multi = multiData[field];
+              multi.endRow = r;
+              if (value) multi.values.push(value);
+              if (field === "abilities") activeMulti = multi;
+            } else {
+              gear[field] = value;
+              const range = firstValueCol === lastValueCol
+                ? this._buildSingleCell(firstValueCol, r)
+                : this._buildAbsoluteRange(firstValueCol, lastValueCol, r);
+              gear[`${field}Cell`] = range;
+            }
           }
-          break; // Process first label in row
         }
 
         // If this row continues a multi-field, append to it
@@ -2647,6 +2820,15 @@ export class SheexcelActorSheet extends ActorSheet {
             // Continue multi if row has any value
           } else {
             activeMulti = null;
+          }
+        } else if (!foundLabel && !activeMulti && !seenFirstLabel && rowHasAnyValue(r)) {
+          const lineValues = [];
+          for (let col = scan.startColumn; col <= scan.endColumn; col++) {
+            const val = String(scan.readCell(r, col) || "").trim();
+            if (val) lineValues.push(val);
+          }
+          if (lineValues.length) {
+            flavorLines.push(lineValues.join(" "));
           }
         }
       }
@@ -2677,6 +2859,10 @@ export class SheexcelActorSheet extends ActorSheet {
         gear[`${field}Cell`] = range;
       }
 
+      if (flavorLines.length) {
+        gear.flavor = flavorLines.join("\n");
+      }
+
       // No need to extract gearPrimaryType - prepareData will categorize by keywords
       gears.push(gear);
     }
@@ -2690,6 +2876,7 @@ export class SheexcelActorSheet extends ActorSheet {
     try {
       this._invalidateApiCache();
       const metadata = await this._fetchSheetMetadata();
+      await this._refreshCoreAbilityModsFromMetadata(metadata);
       const sheets = Array.isArray(metadata.sheets) ? metadata.sheets : [];
       if (!sheets.length) throw new Error("No sheet metadata found.");
 
@@ -2721,6 +2908,27 @@ export class SheexcelActorSheet extends ActorSheet {
     } catch (error) {
       ui.notifications.error(`Update gears failed: ${error.message}`);
     }
+  }
+
+  async _onSetGearQuantity(index, quantity) {
+    if (!Number.isInteger(index)) return;
+    const refs = foundry.utils.deepClone(this.actor.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || []);
+    const ref = refs[index];
+    if (!ref || ref.type !== "gears") return;
+    ref.quantity = String(quantity ?? "").trim();
+    await this.actor.setFlag(MODULE_NAME, FLAGS.CELL_REFERENCES, refs);
+  }
+
+  async _onSetGearCurrency(scope, currencyKey, value) {
+    const safeScope = scope === "banked" ? "banked" : "onPerson";
+    const safeKey = ["gold", "silver", "copper"].includes(currencyKey) ? currencyKey : null;
+    if (!safeKey) return;
+
+    const currency = foundry.utils.deepClone(this.actor.getFlag(MODULE_NAME, FLAGS.GEAR_CURRENCY) || {});
+    currency.onPerson = currency.onPerson || {};
+    currency.banked = currency.banked || {};
+    currency[safeScope][safeKey] = String(value ?? "").trim();
+    await this.actor.setFlag(MODULE_NAME, FLAGS.GEAR_CURRENCY, currency);
   }
 
   async _onBulkAddSpells(event) {
@@ -3139,7 +3347,7 @@ export class SheexcelActorSheet extends ActorSheet {
     const name = ref.spellName || ref.keyword || "Spell";
     const header = ref.circle ? `Circle ${ref.circle}` : "";
 
-    const tags = [ref.spellType, ref.source, ref.discipline, ref.components]
+    const tags = [ref.spellMarkerLabel, ref.spellType, ref.source, ref.discipline, ref.components]
       .filter(Boolean)
       .map(t => `<span class="sheexcel-spell-chat-tag">${t}</span>`)
       .join(" ");
@@ -3203,6 +3411,61 @@ export class SheexcelActorSheet extends ActorSheet {
       <div class="sheexcel-spell-chat sheexcel-ability-chat">
         <div class="sheexcel-spell-chat-title">${name}</div>
         ${tags ? `<div class="sheexcel-spell-chat-tags">${tags}</div>` : ""}
+        ${sections ? `<div class="sheexcel-spell-chat-sections">${sections}</div>` : ""}
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+      content
+    });
+  }
+
+  async _onPostGearToChat(index) {
+    const refs = this.actor.getFlag(MODULE_NAME, FLAGS.CELL_REFERENCES) || [];
+    const ref = refs[index];
+    if (!ref || ref.type !== "gears") return;
+
+    const toLines = (value) => String(value || "").trim();
+    const withMods = (value) => this._formatAbilityTokensWithMods(value);
+    const name = escapeHtml(ref.gearName || ref.keyword || "Gear");
+
+    const tags = [withMods(ref.gearType), withMods(ref.value), withMods(ref.weight), ref.bulk ? withMods(`Bulk ${ref.bulk}`) : ""]
+      .filter(Boolean)
+      .map(t => `<span class="sheexcel-spell-chat-tag">${escapeHtml(String(t))}</span>`)
+      .join(" ");
+
+    const stats = [
+      ref.power ? `<div><strong>Power:</strong> ${escapeHtml(withMods(ref.power))}</div>` : "",
+      ref.noise ? `<div><strong>Noise:</strong> ${escapeHtml(withMods(ref.noise))}</div>` : "",
+      ref.durability ? `<div><strong>Durability:</strong> ${escapeHtml(withMods(ref.durability))}</div>` : "",
+      ref.integrity ? `<div><strong>Integrity:</strong> ${escapeHtml(withMods(ref.integrity))}</div>` : "",
+      ref.resilience ? `<div><strong>Resilience:</strong> ${escapeHtml(withMods(ref.resilience))}</div>` : "",
+      ref.reach ? `<div><strong>Reach/Range:</strong> ${escapeHtml(withMods(ref.reach))}</div>` : "",
+      ref.draw ? `<div><strong>Draw:</strong> ${escapeHtml(withMods(ref.draw))}</div>` : "",
+      ref.accuracy ? `<div><strong>Accuracy:</strong> ${escapeHtml(withMods(ref.accuracy))}</div>` : "",
+      ref.critical ? `<div><strong>Critical:</strong> ${escapeHtml(withMods(ref.critical))}</div>` : "",
+      ref.damage ? `<div><strong>Damage:</strong> ${escapeHtml(withMods(ref.damage))}</div>` : "",
+      ref.armor ? `<div><strong>Armor:</strong> ${escapeHtml(withMods(ref.armor))}</div>` : "",
+      ref.donning ? `<div><strong>Donning:</strong> ${escapeHtml(withMods(ref.donning))}</div>` : "",
+      ref.discomfort ? `<div><strong>Discomfort:</strong> ${escapeHtml(withMods(ref.discomfort))}</div>` : "",
+      ref.charges ? `<div><strong>Charges:</strong> ${escapeHtml(withMods(ref.charges))}</div>` : "",
+      ref.fuel ? `<div><strong>Fuel:</strong> ${escapeHtml(withMods(ref.fuel))}</div>` : "",
+      ref.volume ? `<div><strong>Volume:</strong> ${escapeHtml(withMods(ref.volume))}</div>` : "",
+      ref.singleHand ? `<div><strong>Single Hand:</strong> ${escapeHtml(withMods(ref.singleHand))}</div>` : ""
+    ].filter(Boolean).join("");
+
+    const sections = [
+      ref.flavor ? `<div><strong>Flavor:</strong><br>${enrichTextWithInlineRolls(toLines(withMods(ref.flavor)), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : "",
+      ref.description ? `<div><strong>Description:</strong><br>${enrichTextWithInlineRolls(toLines(withMods(ref.description)), { actorId: this.actor?.id || "", contextLabel: name })}</div>` : "",
+      ref.abilities ? `<div><strong>Abilities:</strong><br>${enrichTextWithInlineRolls(toLines(withMods(ref.abilities)), { actorId: this.actor?.id || "", allowHtml: true, contextLabel: name })}</div>` : ""
+    ].filter(Boolean).join("<br>");
+
+    const content = `
+      <div class="sheexcel-spell-chat sheexcel-gear-chat">
+        <div class="sheexcel-spell-chat-title">${name}</div>
+        ${tags ? `<div class="sheexcel-spell-chat-tags">${tags}</div>` : ""}
+        ${stats ? `<div class="sheexcel-spell-chat-stats">${stats}</div>` : ""}
         ${sections ? `<div class="sheexcel-spell-chat-sections">${sections}</div>` : ""}
       </div>
     `;

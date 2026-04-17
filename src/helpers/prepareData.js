@@ -38,6 +38,17 @@ function buildSheetEmbedUrl(sheetUrl, sheetId) {
  */
 export async function prepareSheetData(data, actor) {
   const actorId = actor?.id || "";
+  const abilityMods = actor.getFlag(MODULE_NAME, FLAGS.ABILITY_MODS) || {};
+  const formatAbilityTokenText = (value) => {
+    const text = String(value || "");
+    if (!text) return "";
+
+    return text.replace(/\b(STR|DEX|CON|INT|WIS|CHA)\b/g, (match) => {
+      const mod = abilityMods[match];
+      if (!Number.isFinite(mod)) return match;
+      return `${match} [${mod}]`;
+    });
+  };
   const normalizeDamageType = (value) => {
     const raw = String(value || "").trim();
     if (!raw) return "";
@@ -70,7 +81,19 @@ export async function prepareSheetData(data, actor) {
   data.hideMenu         = actor.getFlag(MODULE_NAME, FLAGS.HIDE_MENU) || false;
   data.zoomLevel        = actor.getFlag(MODULE_NAME, FLAGS.ZOOM_LEVEL) ?? 100;
   data.sidebarCollapsed = actor.getFlag(MODULE_NAME, FLAGS.SIDEBAR_COLLAPSED) || false;
-  data.gearCurrency      = actor.getFlag(MODULE_NAME, FLAGS.GEAR_CURRENCY) || null;
+  const rawGearCurrency = actor.getFlag(MODULE_NAME, FLAGS.GEAR_CURRENCY) || {};
+  data.gearCurrency = {
+    onPerson: {
+      gold: String(rawGearCurrency?.onPerson?.gold || "").trim(),
+      silver: String(rawGearCurrency?.onPerson?.silver || "").trim(),
+      copper: String(rawGearCurrency?.onPerson?.copper || "").trim()
+    },
+    banked: {
+      gold: String(rawGearCurrency?.banked?.gold || "").trim(),
+      silver: String(rawGearCurrency?.banked?.silver || "").trim(),
+      copper: String(rawGearCurrency?.banked?.copper || "").trim()
+    }
+  };
   const rawRestEntries   = actor.getFlag(MODULE_NAME, FLAGS.REST_ENTRIES) || [];
   data.sheetOpenUrl     = buildSheetOpenUrl(data.sheetUrl, data.sheetId);
   data.sheetEmbedUrl    = buildSheetEmbedUrl(data.sheetUrl, data.sheetId);
@@ -88,6 +111,30 @@ export async function prepareSheetData(data, actor) {
       .sort((a, b) => (a.keyword || '').localeCompare(b.keyword || '', undefined, { sensitivity: 'base' }));
     
     const damageParts = normalizeDamageParts(r.damageParts);
+    const gearFlavorDisplay = formatAbilityTokenText(r.flavor || "");
+    const gearDescriptionDisplay = formatAbilityTokenText(r.description || "");
+    const gearAbilitiesDisplay = formatAbilityTokenText(r.abilities || "");
+    const gearTypeDisplay = formatAbilityTokenText(r.gearType || "");
+    const valueDisplay = formatAbilityTokenText(r.value || "");
+    const weightDisplay = formatAbilityTokenText(r.weight || "");
+    const bulkDisplay = formatAbilityTokenText(r.bulk || "");
+    const powerDisplay = formatAbilityTokenText(r.power || "");
+    const noiseDisplay = formatAbilityTokenText(r.noise || "");
+    const durabilityDisplay = formatAbilityTokenText(r.durability || "");
+    const integrityDisplay = formatAbilityTokenText(r.integrity || "");
+    const resilienceDisplay = formatAbilityTokenText(r.resilience || "");
+    const reachDisplay = formatAbilityTokenText(r.reach || "");
+    const drawDisplay = formatAbilityTokenText(r.draw || "");
+    const accuracyDisplay = formatAbilityTokenText(r.accuracy || "");
+    const criticalDisplay = formatAbilityTokenText(r.critical || "");
+    const damageDisplay = formatAbilityTokenText(r.damage || "");
+    const armorDisplay = formatAbilityTokenText(r.armor || "");
+    const donningDisplay = formatAbilityTokenText(r.donning || "");
+    const discomfortDisplay = formatAbilityTokenText(r.discomfort || "");
+    const chargesDisplay = formatAbilityTokenText(r.charges || "");
+    const fuelDisplay = formatAbilityTokenText(r.fuel || "");
+    const volumeDisplay = formatAbilityTokenText(r.volume || "");
+    const singleHandDisplay = formatAbilityTokenText(r.singleHand || "");
 
     return {
       ...r,
@@ -97,8 +144,33 @@ export async function prepareSheetData(data, actor) {
       effectHtml: enrichTextWithInlineRolls(r.effect || "", { actorId, contextLabel: r.abilityName || r.spellName || r.gearName || r.keyword || "Entry" }),
       notesHtml: enrichTextWithInlineRolls(r.notes || "", { actorId, contextLabel: r.abilityName || r.keyword || "Ability" }),
       empowerHtml: enrichTextWithInlineRolls(r.empower || "", { actorId, contextLabel: r.spellName || r.keyword || "Spell" }),
-      gearDescriptionHtml: enrichTextWithInlineRolls(r.description || "", { actorId, contextLabel: r.gearName || r.keyword || "Gear" }),
-      gearAbilitiesHtml: enrichTextWithInlineRolls(r.abilities || "", { actorId, allowHtml: true, contextLabel: r.gearName || r.keyword || "Gear" }),
+      gearFlavorDisplay,
+      gearDescriptionDisplay,
+      gearAbilitiesDisplay,
+      gearTypeDisplay,
+      valueDisplay,
+      weightDisplay,
+      bulkDisplay,
+      powerDisplay,
+      noiseDisplay,
+      durabilityDisplay,
+      integrityDisplay,
+      resilienceDisplay,
+      reachDisplay,
+      drawDisplay,
+      accuracyDisplay,
+      criticalDisplay,
+      damageDisplay,
+      armorDisplay,
+      donningDisplay,
+      discomfortDisplay,
+      chargesDisplay,
+      fuelDisplay,
+      volumeDisplay,
+      singleHandDisplay,
+      gearFlavorHtml: enrichTextWithInlineRolls(gearFlavorDisplay, { actorId, contextLabel: r.gearName || r.keyword || "Gear" }),
+      gearDescriptionHtml: enrichTextWithInlineRolls(gearDescriptionDisplay, { actorId, contextLabel: r.gearName || r.keyword || "Gear" }),
+      gearAbilitiesHtml: enrichTextWithInlineRolls(gearAbilitiesDisplay, { actorId, allowHtml: true, contextLabel: r.gearName || r.keyword || "Gear" }),
       damageType: normalizeDamageType(r.damageType),
       damageParts,
       hasMultiDamageParts: damageParts.length > 1,

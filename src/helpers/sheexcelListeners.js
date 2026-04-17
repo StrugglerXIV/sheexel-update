@@ -61,6 +61,14 @@ export function attachSheexcelListeners(sheet, html) {
         sheet._updateStatsBlock(html, { force: true }).catch(() => {});
     });
 
+    html.find('.sheexcel-armor-grid').on('change blur', '.sheexcel-armor-value-input', () => {
+        sheet._saveArmorOverridesFromSheet(html).catch(() => {});
+    });
+
+    html.find('.sheexcel-stats-grid').on('change blur', '.sheexcel-stats-value-input', () => {
+        sheet._saveStatsOverridesFromSheet(html).catch(() => {});
+    });
+
     const nameWrap = html.find('.sheexcel-actor-name-wrap');
     const nameLabel = html.find('.sheexcel-actor-name-label');
     const nameInput = html.find('.sheexcel-actor-name-input');
@@ -433,6 +441,28 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         ev.preventDefault();
         sheet._onUpdateAttacksFromSheet(ev);
     });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-attack-toggle", function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const card = $(this).closest(".attack-entry");
+        card.toggleClass("collapsed");
+        const isCollapsed = card.hasClass("collapsed");
+        $(this).attr("title", isCollapsed ? "Expand" : "Collapse");
+        $(this).find(".sheexcel-attack-toggle-icon").text(isCollapsed ? "▶" : "▼");
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-attacks-toggle-all", function(ev) {
+        ev.preventDefault();
+        const button = $(this);
+        const container = button.closest(".sheexcel-main-subtab-content");
+        const cards = container.find(".attack-entry");
+        const state = button.data("state") || "expanded";
+        const collapse = state === "expanded";
+        cards.toggleClass("collapsed", collapse);
+        cards.find(".sheexcel-attack-toggle").attr("title", collapse ? "Expand" : "Collapse");
+        cards.find(".sheexcel-attack-toggle-icon").text(collapse ? "▶" : "▼");
+        button.data("state", collapse ? "collapsed" : "expanded");
+        button.text(collapse ? "Expand All Attacks" : "Collapse All Attacks");
+    });
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-attack-card-trigger", e => handleAttackCard(e, sheet));
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-roll", e => handleRoll(e, sheet));
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-update-spells-button", (ev) => {
@@ -460,6 +490,18 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         $(this).attr("title", isCollapsed ? "Expand" : "Collapse");
         $(this).find(".sheexcel-spell-toggle-icon").text(isCollapsed ? "▶" : "▼");
     });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-spell-post", function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const card = $(this).closest(".sheexcel-spell-card");
+        const index = Number(card.data("index"));
+        if (!Number.isInteger(index)) return;
+        if (card.hasClass("sheexcel-ability-card")) {
+            sheet._onPostAbilityToChat(index);
+            return;
+        }
+        sheet._onPostSpellToChat(index);
+    });
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-gear-toggle", function(ev) {
         ev.preventDefault();
         ev.stopPropagation();
@@ -468,6 +510,26 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         const isCollapsed = card.hasClass("collapsed");
         $(this).attr("title", isCollapsed ? "Expand" : "Collapse");
         $(this).find(".sheexcel-gear-toggle-icon").text(isCollapsed ? "▶" : "▼");
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-gear-post", function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const card = $(this).closest(".sheexcel-gear-card");
+        const index = Number(card.data("index"));
+        if (!Number.isInteger(index)) return;
+        sheet._onPostGearToChat(index);
+    });
+    html.find(".sheexcel-main-subtab-content").on("change blur", ".sheexcel-gear-qty-input", function(ev) {
+        ev.stopPropagation();
+        const index = Number($(this).data("index"));
+        if (!Number.isInteger(index)) return;
+        sheet._onSetGearQuantity(index, $(this).val()).catch(() => {});
+    });
+    html.find(".sheexcel-main-subtab-content").on("change blur", ".sheexcel-gear-currency-input", function(ev) {
+        ev.stopPropagation();
+        const scope = String($(this).data("scope") || "onPerson");
+        const currency = String($(this).data("currency") || "");
+        sheet._onSetGearCurrency(scope, currency, $(this).val()).catch(() => {});
     });
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-gear-type-header", function(ev) {
         ev.preventDefault();
@@ -550,7 +612,7 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         button.text(collapse ? "Expand All Abilities" : "Collapse All Abilities");
     });
     html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-spell-card", (e) => {
-        if ($(e.target).closest(".sheexcel-spell-toggle").length) return;
+        if ($(e.target).closest(".sheexcel-spell-toggle, .sheexcel-spell-post").length) return;
         const index = Number($(e.currentTarget).data("index"));
         if (!Number.isInteger(index)) return;
         if ($(e.currentTarget).hasClass("sheexcel-ability-card")) {
@@ -574,6 +636,13 @@ if (!targetElement || !targetElement.dataset?.checkId) {
         const isCollapsed = card.hasClass("collapsed");
         $(this).attr("title", isCollapsed ? "Expand" : "Collapse");
         $(this).find(".sheexcel-rest-toggle-icon").text(isCollapsed ? "▶" : "▼");
+    });
+    html.find(".sheexcel-main-subtab-content").on("click", ".sheexcel-rest-post", function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const entryIndex = Number($(this).data("entryIndex"));
+        if (!Number.isInteger(entryIndex)) return;
+        sheet._onPostRestLineToChat(entryIndex, null, "card");
     });
     html.find(".sheexcel-main-subtab-content").on("click keydown", ".sheexcel-rest-line-post, .sheexcel-rest-card-post", function(ev) {
         if (ev.type === "keydown" && !["Enter", " ", "Spacebar"].includes(ev.key)) return;
