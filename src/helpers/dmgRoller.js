@@ -156,16 +156,79 @@ function computeTotal(roll) {
   }, 0);
 }
 
+function getDamageDisplayData(roll) {
+  const keptDice = [];
+  const droppedDice = [];
+  let positiveFlat = 0;
+  let negativeFlat = 0;
+
+  roll.terms.forEach((term, i) => {
+    const prev = roll.terms[i - 1];
+    const op = (prev?.constructor.name === "OperatorTerm" ? prev.operator : "+");
+
+    if (term instanceof Die) {
+      term.results.forEach(r => {
+        if (r.discarded) droppedDice.push(r.result);
+        else keptDice.push(r.result);
+      });
+      return;
+    }
+
+    if (term instanceof NumericTerm) {
+      const signed = (op === "-" ? -term.number : term.number);
+      if (signed > 0) positiveFlat += signed;
+      if (signed < 0) negativeFlat += signed;
+    }
+  });
+
+  const adjustedDice = [...keptDice];
+  let boostedDieIndex = -1;
+  if (positiveFlat > 0 && adjustedDice.length) {
+    const highest = Math.max(...adjustedDice);
+    boostedDieIndex = adjustedDice.indexOf(highest);
+    adjustedDice[boostedDieIndex] += positiveFlat;
+  }
+
+  const adjustedTotal = adjustedDice.reduce((sum, value) => sum + value, 0) + negativeFlat;
+
+  return {
+    keptDice,
+    droppedDice,
+    adjustedDice,
+    boostedDieIndex,
+    positiveFlat,
+    negativeFlat,
+    adjustedTotal
+  };
+}
+
+function formatDiceList(values) {
+  return `[${values.join(", ")}]`;
+}
+
 // ——————————————————————————————————————————
 // 5) SEND THE CHAT MESSAGE  
 // ——————————————————————————————————————————
-async function postToChat(roll, preCrit, baseFormula, doubledFormula, isCrit, actor, damageType = "") {
+async function postToChat(roll, preCrit, baseFormula, doubledFormula, isCrit, actor, damageType = "", rollMode = "norm") {
   const speaker = ChatMessage.getSpeaker({ actor });
   const damageLabel = damageType ? `Damage (${damageType})` : "Damage";
+  const display = getDamageDisplayData(roll);
+
+  const modeLabel = rollMode === "adv" ? "Advantage" : (rollMode === "dis" ? "Disadvantage" : "Normal");
+  const rolledDiceLine = `<em>Rolled Dice:</em> ${formatDiceList(display.keptDice)}`;
+  const afterBonusLine = `<br><em>After Bonuses:</em> ${formatDiceList(display.adjustedDice)}`;
+
+  const droppedLine = display.droppedDice.length
+    ? `<br><em>Dropped Dice:</em> ${formatDiceList(display.droppedDice)} (${modeLabel})`
+    : "";
+
+  const negativeLine = display.negativeFlat < 0
+    ? `<br><em>Flat penalty:</em> ${display.negativeFlat}`
+    : "";
 
   const flavor = isCrit
-    ? `<strong>🔪 Critical ${damageLabel}</strong> (doubled): Rolled [${preCrit.join(", ")}] → Total ${roll.total}<br><em>Formula:</em> <code>${doubledFormula}</code>`
-    : `<strong>🔪 ${damageLabel}</strong>: ${baseFormula} = ${roll.total}`;
+    ? `<strong>🔪 Critical ${damageLabel}</strong><br><em>Formula:</em> <code>${doubledFormula}</code><br>${rolledDiceLine}${afterBonusLine}${droppedLine}${negativeLine}`
+    : `<strong>🔪 ${damageLabel}</strong><br><em>Formula:</em> <code>${baseFormula}</code><br>${rolledDiceLine}${afterBonusLine}${droppedLine}${negativeLine}`;
 
   await roll.toMessage({
     speaker,
@@ -308,6 +371,7 @@ export async function handleDamage({ dmgF, isCrit, keyword, sheet, dmgAdvantage,
   }
 
   // 6e) Post
-  await postToChat(dmgRoll, preCrit, baseFormula, doubledFormula, isCritLocal, sheet.actor, damageType);
+  const rollMode = isAdv ? "adv" : (isDis ? "dis" : "norm");
+  await postToChat(dmgRoll, preCrit, baseFormula, doubledFormula, isCritLocal, sheet.actor, damageType, rollMode);
   return true;
 }

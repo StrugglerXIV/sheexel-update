@@ -340,6 +340,16 @@
     box-shadow: inset 0 1px 0 rgba(255, 226, 153, 0.06);
 }
 
+/* Sheexcel damage cards provide their own per-die breakdown.
+    Hide Foundry's native dice block for damage messages to avoid ambiguity. */
+.chat-message.sheexcel-chat-damage-message .dice-roll {
+    display: none !important;
+}
+
+.chat-message.sheexcel-chat-damage-message .dice-tooltip {
+    display: none !important;
+}
+
 .chat-message.sheexcel-chat-roll-message .dice-roll .dice-formula {
     font-family: 'Fontin', 'Georgia', serif;
     color: #d8bf89;

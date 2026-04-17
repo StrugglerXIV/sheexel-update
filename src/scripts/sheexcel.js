@@ -108,6 +108,17 @@ Hooks.on("renderChatMessage", (message, html) => {
     html.addClass("sheexcel-chat-message sheexcel-chat-roll-message");
   }
 
+  if (html.find(".sheexcel-chat-flavor-damage").length) {
+    html.addClass("sheexcel-chat-damage-message");
+    html.find(".dice-roll, .dice-tooltip").remove();
+
+    const messageContent = html.find(".message-content");
+    if (messageContent.length) {
+      const isEmpty = messageContent.children().length === 0 && !messageContent.text().trim();
+      if (isEmpty) messageContent.remove();
+    }
+  }
+
   if (html.find(".sheexcel-attack-card, .sheexcel-spell-chat").length) {
     html.addClass("sheexcel-chat-message sheexcel-chat-card-message");
   }
