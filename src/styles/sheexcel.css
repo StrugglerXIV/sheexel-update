@@ -4497,16 +4497,18 @@
     letter-spacing: 0.2px;
 }
 
-.sheexcel-armor-value-input {
-    width: 68px;
-    border: 1px solid rgba(191, 160, 90, 0.45);
-    background: rgba(20, 15, 11, 0.75);
-    color: #ffdca0;
-    border-radius: 6px;
-    padding: 2px 6px;
-    text-align: right;
-    font-weight: 700;
-    line-height: 1.2;
+input.sheexcel-armor-value-input {
+    width: 68px !important;
+    border: 1px solid rgba(191, 160, 90, 0.45) !important;
+    background: rgba(20, 15, 11, 0.75) !important;
+    color: #ffdca0 !important;
+    border-radius: 6px !important;
+    padding: 2px 6px !important;
+    text-align: right !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    height: auto !important;
+    min-width: 0 !important;
 }
 
 .sheexcel-armor-value-input:focus {

@@ -173,12 +173,12 @@
         {{#if groupedReferences.attacks.length}}
         <button type="button" class="sheexcel-attacks-toggle-all" data-state="collapsed">Expand All Attacks</button>
         {{/if}}
-        <label class="sheexcel-favourites-toggle"><input type="checkbox" class="sheexcel-favourites-toggle-input" data-scope="attacks"> Favourites</label>
+        <!-- Favourites toggle removed -->
       </div>
       <div class="sheexcel-attacks-grid">
         {{#each groupedReferences.attacks}}
         <div class="attack-entry collapsed" data-index="{{this.index}}">
-          <span class="sheexcel-favourite-star {{#if this.favourite}}favourited{{/if}}" title="Toggle Favourite" data-scope="attacks" data-index="{{this.index}}">&#9733;</span>
+          <!-- Favourites star removed -->
           <div class="attack-card-header">
             <div class="attack-title-wrap">
               <strong class="attack-name">{{this.attackName}}</strong>
@@ -245,7 +245,7 @@
         <button type="button" class="sheexcel-spells-toggle-groups" data-state="collapsed">Expand All Circles</button>
         <button type="button" class="sheexcel-spells-toggle-all" data-state="collapsed">Expand All Spells</button>
         {{/if}}
-        <label class="sheexcel-favourites-toggle"><input type="checkbox" class="sheexcel-favourites-toggle-input" data-scope="spells"> Favourites</label>
+        <!-- Favourites toggle removed -->
       </div>
       {{#if groupedReferences.spells.length}}
       {{#each groupedReferences.spellsByCircle}}
@@ -257,7 +257,7 @@
         <div class="sheexcel-spells-grid">
           {{#each this.spells}}
           <div class="sheexcel-spell-card collapsed" data-index="{{this.index}}">
-            <span class="sheexcel-favourite-star {{#if this.favourite}}favourited{{/if}}" title="Toggle Favourite" data-scope="spells" data-index="{{this.index}}">&#9733;</span>
+            <!-- Favourites star removed -->
             <div class="sheexcel-spell-header">
               <div class="sheexcel-spell-name">{{#if this.spellName}}{{this.spellName}}{{else}}{{this.keyword}}{{/if}}</div>
               <div class="sheexcel-spell-header-actions">
@@ -334,7 +334,7 @@
         <button type="button" class="sheexcel-gears-toggle-all-groups" data-state="collapsed">Expand All Groups</button>
         <button type="button" class="sheexcel-gears-toggle-all-cards" data-state="collapsed">Expand All Items</button>
         {{/if}}
-        <label class="sheexcel-favourites-toggle"><input type="checkbox" class="sheexcel-favourites-toggle-input" data-scope="gears"> Favourites</label>
+        <!-- Favourites toggle removed -->
       </div>
       <div class="sheexcel-gear-currency">
         <div class="sheexcel-gear-currency-block">
@@ -383,7 +383,7 @@
         <div class="sheexcel-gears-grid">
           {{#each this.gears}}
           <div class="sheexcel-gear-card collapsed" data-index="{{this.index}}">
-            <span class="sheexcel-favourite-star {{#if this.favourite}}favourited{{/if}}" title="Toggle Favourite" data-scope="gears" data-index="{{this.index}}">&#9733;</span>
+            <!-- Favourites star removed -->
             <div class="sheexcel-gear-header">
               <div class="sheexcel-gear-name">
                 <input type="text" class="sheexcel-gear-qty-input" data-index="{{this.index}}" value="{{this.quantity}}" aria-label="{{this.gearName}} quantity">
